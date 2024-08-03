@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title></title>
+    <url>/posts/0.html</url>
+    <content><![CDATA[<h2 id="tasks"><a class="markdownIt-Anchor" href="#tasks"></a> Tasks</h2>
+<ul>
+<li>
+<p>[ ] 写博客</p>
+</li>
+<li>
+<p>[ ] write blog</p>
+</li>
+<li>
+<p>[ ] Compute OS</p>
+</li>
+<li>
+<p>[ ] #task 写博客 🔺 ➕ 2024-08-02</p>
+</li>
+</ul>
+]]></content>
+  </entry>
+  <entry>
+    <title>序言</title>
+    <url>/posts/3491a993.html</url>
+    <content><![CDATA[<blockquote>
+<p>万物有始有终，博客由此开始</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>初始</category>
+      </categories>
+      <tags>
+        <tag>测试</tag>
+        <tag>开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>趋势</title>
+    <url>/posts/db913855.html</url>
+    <content><![CDATA[<pre class="line-numbers language-contributionGraph" data-language="contributionGraph"><code class="language-contributionGraph">title: Contributions
+graphType: default
+dateRangeValue: 12
+dateRangeType: LATEST_MONTH
+startOfWeek: 1
+showCellRuleIndicators: true
+titleStyle:
+  textAlign: center
+  fontSize: 15px
+  fontWeight: normal
+dataSource:
+  type: PAGE
+  value: &quot;&quot;
+  dateField:
+    type: PAGE_PROPERTY
+    value: date
+  countField:
+    type: DEFAULT
+fillTheScreen: false
+enableMainContainerShadow: false
+mainContainerStyle: &#123;&#125;
+cellStyleRules: []
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+]]></content>
+      <tags>
+        <tag>主页</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>随记</title>
+    <url>/posts/f211d1c6.html</url>
+    <content><![CDATA[<blockquote>
+<p>今日无雨，微风徐徐</p>
+</blockquote>
+<p><a href="/posts/3491a993.html">序言</a></p>
+<p><a href="/posts/6c92115f.html">Spring</a></p>
+]]></content>
+  </entry>
+  <entry>
+    <title>Spring</title>
+    <url>/posts/6c92115f.html</url>
+    <content><![CDATA[]]></content>
+      <categories>
+        <category>学习</category>
+        <category>框架</category>
+        <category>spring</category>
+      </categories>
+  </entry>
+</search>
