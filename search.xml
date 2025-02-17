@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title></title>
+    <url>/posts/0.html</url>
+    <content><![CDATA[<h2 id="tasks"><a class="markdownIt-Anchor" href="#tasks"></a> Tasks</h2>
+<ul>
+<li>
+<p>[ ] 写博客</p>
+</li>
+<li>
+<p>[ ] write blog</p>
+</li>
+<li>
+<p>[ ] Compute OS</p>
+</li>
+<li>
+<p>[ ] #task 写博客 🔺 ➕ 2024-08-02</p>
+</li>
+</ul>
+]]></content>
+  </entry>
+  <entry>
+    <title>序言</title>
+    <url>/posts/3491a993.html</url>
+    <content><![CDATA[<blockquote>
+<p>万物有始有终，博客由此开始</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>初始</category>
+      </categories>
+      <tags>
+        <tag>测试</tag>
+        <tag>开发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>趋势</title>
+    <url>/posts/db913855.html</url>
+    <content><![CDATA[<pre class="line-numbers language-contributionGraph" data-language="contributionGraph"><code class="language-contributionGraph">title: Contributions
+graphType: default
+dateRangeValue: 12
+dateRangeType: LATEST_MONTH
+startOfWeek: 1
+showCellRuleIndicators: true
+titleStyle:
+  textAlign: center
+  fontSize: 15px
+  fontWeight: normal
+dataSource:
+  type: PAGE
+  value: &quot;&quot;
+  dateField:
+    type: PAGE_PROPERTY
+    value: date
+  countField:
+    type: DEFAULT
+fillTheScreen: false
+enableMainContainerShadow: false
+mainContainerStyle: &#123;&#125;
+cellStyleRules: []
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+]]></content>
+      <tags>
+        <tag>主页</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>随记</title>
+    <url>/posts/f211d1c6.html</url>
+    <content><![CDATA[<blockquote>
+<p>今日无雨，微风徐徐</p>
+</blockquote>
+<p><a href="/posts/3491a993.html">序言</a></p>
+<p><a href="/posts/6c92115f.html">Spring</a></p>
+]]></content>
+  </entry>
+  <entry>
+    <title>记录一次排查因线程WAITING导致应用假死的经历</title>
+    <url>/posts/7e818be6.html</url>
+    <content><![CDATA[<h3 id="背景"><a class="markdownIt-Anchor" href="#背景"></a> 背景</h3>
+<p>在一个阳光明媚的下午，我正在悠哉游哉的在工位上畅游网络世界(摸鱼 😃 )，忽然心里有点不好的预感，果然哈，企业微信里产品经理弹了一条消息给我 “测试服务器的系统登录进去获取不到菜单，急速度处理”，我小嘴一撇快速回复“好，小问题”，然后连接到测试服务器，到系统管理后台目录重新跑下 <a href="http://start.sh">start.sh</a> 脚本，心想这种问题重新运行下应该就没事了，想不到，竟然也折腾了一个小时，因此记录一下排查经历</p>
+<h3 id="过程"><a class="markdownIt-Anchor" href="#过程"></a> 过程</h3>
+<ol>
+<li>当重新运行了start.sh脚本后，系统能够正常运行，但是过一会就立马又是卡死状态，我打开浏览器登录进入系统，f12打开控制台看到获取菜单的请求一直在加载中，没有拿到响应，使用 tail 命令查看日志信息，请求日志和响应的日志信息都能够正常输出</li>
+<li>心想这是什么玩意，响应也返回了为什么会卡死呢，猜测是不是网关出了问题，随即又去排查网关的日志，发现只输出了请求的日志，没有输出响应的日志，难道是网关的问题吗，随即remote debug网关服务(测试服务器在本地机房，为了方便调试开启了remote debug)，将断点打在了 <code>NettyRoutingFilter#filter</code> 方法中(NettyRoutingFilter是最终的发送请求的过滤器)，然后让客户端的请求发送过来，发现只有请求发送过去，迟迟接受不到系统服务的响应(没有配置responseTimeout配置，会一直等待服务的响应)，这肯定是系统服务出问题了</li>
+<li>排查是不是系统的硬盘空间不足了导致的，使用 <code>df -h</code> 命令查看还有100多G的空间，当时就陷入了死胡同，过了一会儿突然想到可以用 <code>jastck</code> 命令打印下服务的线程信息，查看下请求线程的状态堆栈，随即就发现了问题根源所在</li>
+</ol>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token string">"http-nio-6002-exec-2"</span> #<span class="token number">151</span> daemon prio<span class="token operator">=</span><span class="token number">5</span> os_prio<span class="token operator">=</span><span class="token number">0</span> tid<span class="token operator">=</span><span class="token number">0x000070fb4d7c8000</span> nid<span class="token operator">=</span><span class="token number">0x3c3178</span> waiting <span class="token keyword">for</span> monitor entry <span class="token punctuation">[</span><span class="token number">0x000070fce07fb000</span><span class="token punctuation">]</span>
+
+<span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>lang<span class="token punctuation">.</span></span>Thread<span class="token punctuation">.</span>State</span><span class="token operator">:</span> <span class="token constant">BLOCKED</span> <span class="token punctuation">(</span>on object monitor<span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>SocketFrameHandler</span><span class="token punctuation">.</span><span class="token function">writeFrame</span><span class="token punctuation">(</span><span class="token class-name">SocketFrameHandler</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">170</span><span class="token punctuation">)</span>
+
+<span class="token operator">-</span> waiting <span class="token keyword">to</span> <span class="token namespace">lock</span> <span class="token generics"><span class="token punctuation">&lt;</span>0x00000000eac318c0<span class="token punctuation">></span></span> <span class="token punctuation">(</span>a <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>io<span class="token punctuation">.</span></span>DataOutputStream</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQConnection</span><span class="token punctuation">.</span><span class="token function">writeFrame</span><span class="token punctuation">(</span><span class="token class-name">AMQConnection</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">562</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQCommand</span><span class="token punctuation">.</span><span class="token function">transmit</span><span class="token punctuation">(</span><span class="token class-name">AMQCommand</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">130</span><span class="token punctuation">)</span>
+
+<span class="token operator">-</span> locked <span class="token generics"><span class="token punctuation">&lt;</span>0x00000000fa3a3cb0<span class="token punctuation">></span></span> <span class="token punctuation">(</span>a <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>CommandAssembler</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQChannel</span><span class="token punctuation">.</span><span class="token function">quiescingTransmit</span><span class="token punctuation">(</span><span class="token class-name">AMQChannel</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">447</span><span class="token punctuation">)</span>
+
+<span class="token operator">-</span> locked <span class="token generics"><span class="token punctuation">&lt;</span>0x00000000fa3a38d8<span class="token punctuation">></span></span> <span class="token punctuation">(</span>a <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>lang<span class="token punctuation">.</span></span>Object</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQChannel</span><span class="token punctuation">.</span><span class="token function">quiescingTransmit</span><span class="token punctuation">(</span><span class="token class-name">AMQChannel</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">429</span><span class="token punctuation">)</span>
+
+<span class="token operator">-</span> locked <span class="token generics"><span class="token punctuation">&lt;</span>0x00000000fa3a38d8<span class="token punctuation">></span></span> <span class="token punctuation">(</span>a <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>lang<span class="token punctuation">.</span></span>Object</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQChannel</span><span class="token punctuation">.</span><span class="token function">quiescingRpc</span><span class="token punctuation">(</span><span class="token class-name">AMQChannel</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">346</span><span class="token punctuation">)</span>
+
+<span class="token operator">-</span> locked <span class="token generics"><span class="token punctuation">&lt;</span>0x00000000fa3a38d8<span class="token punctuation">></span></span> <span class="token punctuation">(</span>a <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>lang<span class="token punctuation">.</span></span>Object</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQChannel</span><span class="token punctuation">.</span><span class="token function">rpc</span><span class="token punctuation">(</span><span class="token class-name">AMQChannel</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">337</span><span class="token punctuation">)</span>
+
+<span class="token operator">-</span> locked <span class="token generics"><span class="token punctuation">&lt;</span>0x00000000fa3a38d8<span class="token punctuation">></span></span> <span class="token punctuation">(</span>a <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>lang<span class="token punctuation">.</span></span>Object</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQChannel</span><span class="token punctuation">.</span><span class="token function">privateRpc</span><span class="token punctuation">(</span><span class="token class-name">AMQChannel</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">277</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQChannel</span><span class="token punctuation">.</span><span class="token function">exnWrappingRpc</span><span class="token punctuation">(</span><span class="token class-name">AMQChannel</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">138</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>ChannelN</span><span class="token punctuation">.</span><span class="token keyword">open</span><span class="token punctuation">(</span><span class="token class-name">ChannelN</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">133</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>ChannelManager</span><span class="token punctuation">.</span><span class="token function">createChannel</span><span class="token punctuation">(</span><span class="token class-name">ChannelManager</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">176</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>rabbitmq<span class="token punctuation">.</span>client<span class="token punctuation">.</span>impl<span class="token punctuation">.</span></span>AMQConnection</span><span class="token punctuation">.</span><span class="token function">createChannel</span><span class="token punctuation">(</span><span class="token class-name">AMQConnection</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">553</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>SimpleConnection</span><span class="token punctuation">.</span><span class="token function">createChannel</span><span class="token punctuation">(</span><span class="token class-name">SimpleConnection</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">57</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span>$<span class="token class-name">ChannelCachingConnectionProxy</span><span class="token punctuation">.</span><span class="token function">createBareChannel</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1365</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span>$<span class="token class-name">ChannelCachingConnectionProxy</span><span class="token punctuation">.</span>access$<span class="token function">200</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1351</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span><span class="token punctuation">.</span><span class="token function">doCreateBareChannel</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">672</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span><span class="token punctuation">.</span><span class="token function">createBareChannel</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">655</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span><span class="token punctuation">.</span><span class="token function">getCachedChannelProxy</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">625</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span><span class="token punctuation">.</span><span class="token function">getChannel</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">516</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span><span class="token punctuation">.</span>access$<span class="token function">1700</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">102</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>connection<span class="token punctuation">.</span></span>CachingConnectionFactory</span>$<span class="token class-name">ChannelCachingConnectionProxy</span><span class="token punctuation">.</span><span class="token function">createChannel</span><span class="token punctuation">(</span><span class="token class-name">CachingConnectionFactory</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1370</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>RabbitTemplate</span><span class="token punctuation">.</span><span class="token function">doExecute</span><span class="token punctuation">(</span><span class="token class-name">RabbitTemplate</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">2079</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>RabbitTemplate</span><span class="token punctuation">.</span><span class="token function">execute</span><span class="token punctuation">(</span><span class="token class-name">RabbitTemplate</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">2047</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>RabbitTemplate</span><span class="token punctuation">.</span><span class="token function">send</span><span class="token punctuation">(</span><span class="token class-name">RabbitTemplate</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">994</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>RabbitTemplate</span><span class="token punctuation">.</span><span class="token function">convertAndSend</span><span class="token punctuation">(</span><span class="token class-name">RabbitTemplate</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1100</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>amqp<span class="token punctuation">.</span>rabbit<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>RabbitTemplate</span><span class="token punctuation">.</span><span class="token function">convertAndSend</span><span class="token punctuation">(</span><span class="token class-name">RabbitTemplate</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1091</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>logger<span class="token punctuation">.</span>reports<span class="token punctuation">.</span></span>RabbitLoggerReport</span><span class="token punctuation">.</span><span class="token function">reportLog</span><span class="token punctuation">(</span><span class="token class-name">RabbitLoggerReport</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">25</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>logger<span class="token punctuation">.</span>reports<span class="token punctuation">.</span></span>DefaultLoggerReportChain</span><span class="token punctuation">.</span><span class="token function">reportLog</span><span class="token punctuation">(</span><span class="token class-name">DefaultLoggerReportChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">71</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>logger<span class="token punctuation">.</span>reports<span class="token punctuation">.</span></span>DefaultLoggerReportChain</span><span class="token punctuation">.</span><span class="token function">reportLog</span><span class="token punctuation">(</span><span class="token class-name">DefaultLoggerReportChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">72</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>logger<span class="token punctuation">.</span>reports<span class="token punctuation">.</span></span>DefaultLoggerReportChain</span><span class="token punctuation">.</span><span class="token function">reportLog</span><span class="token punctuation">(</span><span class="token class-name">DefaultLoggerReportChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">60</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>logger<span class="token punctuation">.</span>advisor<span class="token punctuation">.</span></span>LogReportInterceptor</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">LogReportInterceptor</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">53</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>aop<span class="token punctuation">.</span>framework<span class="token punctuation">.</span></span>ReflectiveMethodInvocation</span><span class="token punctuation">.</span><span class="token function">proceed</span><span class="token punctuation">(</span><span class="token class-name">ReflectiveMethodInvocation</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">186</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>logger<span class="token punctuation">.</span>advisor<span class="token punctuation">.</span></span>LogReportInterceptor</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">LogReportInterceptor</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">46</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>aop<span class="token punctuation">.</span>framework<span class="token punctuation">.</span></span>ReflectiveMethodInvocation</span><span class="token punctuation">.</span><span class="token function">proceed</span><span class="token punctuation">(</span><span class="token class-name">ReflectiveMethodInvocation</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">186</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>aop<span class="token punctuation">.</span>framework<span class="token punctuation">.</span></span>CglibAopProxy</span>$<span class="token class-name">DynamicAdvisedInterceptor</span><span class="token punctuation">.</span><span class="token function">intercept</span><span class="token punctuation">(</span><span class="token class-name">CglibAopProxy</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">688</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>sys<span class="token punctuation">.</span>modules<span class="token punctuation">.</span>system<span class="token punctuation">.</span>controller<span class="token punctuation">.</span></span>SysFileController</span>$$<span class="token class-name">EnhancerBySpringCGLIB</span>$$bc9efccd<span class="token punctuation">.</span><span class="token function">queryByRelevanceId</span><span class="token punctuation">(</span><span class="token generics"><span class="token punctuation">&lt;</span>generated<span class="token punctuation">></span></span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">sun<span class="token punctuation">.</span>reflect<span class="token punctuation">.</span></span>GeneratedMethodAccessor357</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">Unknown</span> <span class="token class-name">Source</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">sun<span class="token punctuation">.</span>reflect<span class="token punctuation">.</span></span>DelegatingMethodAccessorImpl</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">DelegatingMethodAccessorImpl</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">43</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>lang<span class="token punctuation">.</span>reflect<span class="token punctuation">.</span></span>Method</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">Method</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">498</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>method<span class="token punctuation">.</span>support<span class="token punctuation">.</span></span>InvocableHandlerMethod</span><span class="token punctuation">.</span><span class="token function">doInvoke</span><span class="token punctuation">(</span><span class="token class-name">InvocableHandlerMethod</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">190</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>method<span class="token punctuation">.</span>support<span class="token punctuation">.</span></span>InvocableHandlerMethod</span><span class="token punctuation">.</span><span class="token function">invokeForRequest</span><span class="token punctuation">(</span><span class="token class-name">InvocableHandlerMethod</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">138</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span>mvc<span class="token punctuation">.</span>method<span class="token punctuation">.</span>annotation<span class="token punctuation">.</span></span>ServletInvocableHandlerMethod</span><span class="token punctuation">.</span><span class="token function">invokeAndHandle</span><span class="token punctuation">(</span><span class="token class-name">ServletInvocableHandlerMethod</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">104</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span>mvc<span class="token punctuation">.</span>method<span class="token punctuation">.</span>annotation<span class="token punctuation">.</span></span>RequestMappingHandlerAdapter</span><span class="token punctuation">.</span><span class="token function">invokeHandlerMethod</span><span class="token punctuation">(</span><span class="token class-name">RequestMappingHandlerAdapter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">892</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span>mvc<span class="token punctuation">.</span>method<span class="token punctuation">.</span>annotation<span class="token punctuation">.</span></span>RequestMappingHandlerAdapter</span><span class="token punctuation">.</span><span class="token function">handleInternal</span><span class="token punctuation">(</span><span class="token class-name">RequestMappingHandlerAdapter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">797</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span>mvc<span class="token punctuation">.</span>method<span class="token punctuation">.</span></span>AbstractHandlerMethodAdapter</span><span class="token punctuation">.</span><span class="token function">handle</span><span class="token punctuation">(</span><span class="token class-name">AbstractHandlerMethodAdapter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">87</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span></span>DispatcherServlet</span><span class="token punctuation">.</span><span class="token function">doDispatch</span><span class="token punctuation">(</span><span class="token class-name">DispatcherServlet</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1039</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span></span>DispatcherServlet</span><span class="token punctuation">.</span><span class="token function">doService</span><span class="token punctuation">(</span><span class="token class-name">DispatcherServlet</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">942</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span></span>FrameworkServlet</span><span class="token punctuation">.</span><span class="token function">processRequest</span><span class="token punctuation">(</span><span class="token class-name">FrameworkServlet</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1005</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span></span>FrameworkServlet</span><span class="token punctuation">.</span><span class="token function">doGet</span><span class="token punctuation">(</span><span class="token class-name">FrameworkServlet</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">897</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">javax<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span>http<span class="token punctuation">.</span></span>HttpServlet</span><span class="token punctuation">.</span><span class="token function">service</span><span class="token punctuation">(</span><span class="token class-name">HttpServlet</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">634</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span></span>FrameworkServlet</span><span class="token punctuation">.</span><span class="token function">service</span><span class="token punctuation">(</span><span class="token class-name">FrameworkServlet</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">882</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">javax<span class="token punctuation">.</span>servlet<span class="token punctuation">.</span>http<span class="token punctuation">.</span></span>HttpServlet</span><span class="token punctuation">.</span><span class="token function">service</span><span class="token punctuation">(</span><span class="token class-name">HttpServlet</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">741</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">231</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>tomcat<span class="token punctuation">.</span>websocket<span class="token punctuation">.</span>server<span class="token punctuation">.</span></span>WsFilter</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">WsFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">53</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">193</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>alibaba<span class="token punctuation">.</span>druid<span class="token punctuation">.</span>support<span class="token punctuation">.</span>http<span class="token punctuation">.</span></span>WebStatFilter</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">WebStatFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">124</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">193</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">com<span class="token punctuation">.</span>xx<span class="token punctuation">.</span>common<span class="token punctuation">.</span>xss<span class="token punctuation">.</span></span>XssFilter</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">XssFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">55</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">193</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>RequestContextFilter</span><span class="token punctuation">.</span><span class="token function">doFilterInternal</span><span class="token punctuation">(</span><span class="token class-name">RequestContextFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">99</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>OncePerRequestFilter</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">OncePerRequestFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">107</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">193</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>FormContentFilter</span><span class="token punctuation">.</span><span class="token function">doFilterInternal</span><span class="token punctuation">(</span><span class="token class-name">FormContentFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">92</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>OncePerRequestFilter</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">OncePerRequestFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">107</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">193</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>HiddenHttpMethodFilter</span><span class="token punctuation">.</span><span class="token function">doFilterInternal</span><span class="token punctuation">(</span><span class="token class-name">HiddenHttpMethodFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">93</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>OncePerRequestFilter</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">OncePerRequestFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">107</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">193</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>CharacterEncodingFilter</span><span class="token punctuation">.</span><span class="token function">doFilterInternal</span><span class="token punctuation">(</span><span class="token class-name">CharacterEncodingFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">200</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>springframework<span class="token punctuation">.</span>web<span class="token punctuation">.</span>filter<span class="token punctuation">.</span></span>OncePerRequestFilter</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">OncePerRequestFilter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">107</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">internalDoFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">193</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>ApplicationFilterChain</span><span class="token punctuation">.</span><span class="token function">doFilter</span><span class="token punctuation">(</span><span class="token class-name">ApplicationFilterChain</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">166</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>StandardWrapperValve</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">StandardWrapperValve</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">200</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>StandardContextValve</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">StandardContextValve</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">96</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>authenticator<span class="token punctuation">.</span></span>AuthenticatorBase</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">AuthenticatorBase</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">490</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>StandardHostValve</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">StandardHostValve</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">139</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>valves<span class="token punctuation">.</span></span>ErrorReportValve</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">ErrorReportValve</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">92</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>core<span class="token punctuation">.</span></span>StandardEngineValve</span><span class="token punctuation">.</span><span class="token function">invoke</span><span class="token punctuation">(</span><span class="token class-name">StandardEngineValve</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">74</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>catalina<span class="token punctuation">.</span>connector<span class="token punctuation">.</span></span>CoyoteAdapter</span><span class="token punctuation">.</span><span class="token function">service</span><span class="token punctuation">(</span><span class="token class-name">CoyoteAdapter</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">343</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>coyote<span class="token punctuation">.</span>http11<span class="token punctuation">.</span></span>Http11Processor</span><span class="token punctuation">.</span><span class="token function">service</span><span class="token punctuation">(</span><span class="token class-name">Http11Processor</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">408</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>coyote<span class="token punctuation">.</span></span>AbstractProcessorLight</span><span class="token punctuation">.</span><span class="token function">process</span><span class="token punctuation">(</span><span class="token class-name">AbstractProcessorLight</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">66</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>coyote<span class="token punctuation">.</span></span>AbstractProtocol</span>$<span class="token class-name">ConnectionHandler</span><span class="token punctuation">.</span><span class="token function">process</span><span class="token punctuation">(</span><span class="token class-name">AbstractProtocol</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">836</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>tomcat<span class="token punctuation">.</span>util<span class="token punctuation">.</span>net<span class="token punctuation">.</span></span>NioEndpoint</span>$<span class="token class-name">SocketProcessor</span><span class="token punctuation">.</span><span class="token function">doRun</span><span class="token punctuation">(</span><span class="token class-name">NioEndpoint</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1747</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>tomcat<span class="token punctuation">.</span>util<span class="token punctuation">.</span>net<span class="token punctuation">.</span></span>SocketProcessorBase</span><span class="token punctuation">.</span><span class="token function">run</span><span class="token punctuation">(</span><span class="token class-name">SocketProcessorBase</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">49</span><span class="token punctuation">)</span>
+
+<span class="token operator">-</span> locked <span class="token generics"><span class="token punctuation">&lt;</span>0x00000000f97c1de0<span class="token punctuation">></span></span> <span class="token punctuation">(</span>a <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>tomcat<span class="token punctuation">.</span>util<span class="token punctuation">.</span>net<span class="token punctuation">.</span></span>NioEndpoint</span>$<span class="token class-name">NioSocketWrapper</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>util<span class="token punctuation">.</span>concurrent<span class="token punctuation">.</span></span>ThreadPoolExecutor</span><span class="token punctuation">.</span><span class="token function">runWorker</span><span class="token punctuation">(</span><span class="token class-name">ThreadPoolExecutor</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">1149</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>util<span class="token punctuation">.</span>concurrent<span class="token punctuation">.</span></span>ThreadPoolExecutor</span>$<span class="token class-name">Worker</span><span class="token punctuation">.</span><span class="token function">run</span><span class="token punctuation">(</span><span class="token class-name">ThreadPoolExecutor</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">624</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">org<span class="token punctuation">.</span>apache<span class="token punctuation">.</span>tomcat<span class="token punctuation">.</span>util<span class="token punctuation">.</span>threads<span class="token punctuation">.</span></span>TaskThread</span>$<span class="token class-name">WrappingRunnable</span><span class="token punctuation">.</span><span class="token function">run</span><span class="token punctuation">(</span><span class="token class-name">TaskThread</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">61</span><span class="token punctuation">)</span>
+
+at <span class="token class-name"><span class="token namespace">java<span class="token punctuation">.</span>lang<span class="token punctuation">.</span></span>Thread</span><span class="token punctuation">.</span><span class="token function">run</span><span class="token punctuation">(</span><span class="token class-name">Thread</span><span class="token punctuation">.</span>java<span class="token operator">:</span><span class="token number">748</span><span class="token punctuation">)</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<ol start="4">
+<li>可以看到我们的请求线程已经被BLOCKED了，线程堆栈表明是rabbitmq消息发送阻塞住了，马上连接rabbitmq的服务器，打印日志发现磁盘不足导致消息根本无法写入，使用<code>df -h</code> 指令查看硬盘空间情况，发现只有几百k的空间了，因为这台服务器只运行了docker容器，猜测是docker的运行日志未清理导致空间占用的过大，然后编写了清理日志的脚本</li>
+</ol>
+<pre class="line-numbers language-bash" data-language="bash"><div class="caption"><span>title</span></div><code class="language-bash"><span class="token shebang important">#!/bin/sh </span>
+  
+<span class="token builtin class-name">echo</span> <span class="token string">"======== start clean docker containers logs ========"</span>  
+  
+<span class="token assign-left variable">logs</span><span class="token operator">=</span><span class="token variable"><span class="token variable">$(</span><span class="token function">find</span> /var/lib/docker/containers/ <span class="token parameter variable">-name</span> *-json.log<span class="token variable">)</span></span>  
+  
+<span class="token keyword">for</span> <span class="token for-or-select variable">log</span> <span class="token keyword">in</span> <span class="token variable">$logs</span>  
+        <span class="token keyword">do</span>  
+                <span class="token builtin class-name">echo</span> <span class="token string">"clean logs : <span class="token variable">$log</span>"</span>  
+                <span class="token function">cat</span> /dev/null <span class="token operator">></span> <span class="token variable">$log</span>  
+        <span class="token keyword">done</span>  
+
+<span class="token builtin class-name">echo</span> <span class="token string">"======== end clean docker containers logs ========"</span>  <span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<p>再刷新浏览器请求果然立马成功了，长吁一口气，不过由于docker会一直运行，产生的日志大小会源源不断的增长，为了治本设置了docker的日志大小上限，以免再出现这种情况</p>
+<ol>
+<li>修改<code>/etc/docker/daemon.json</code> 文件，将下面的内容复制进去再 <code>systemctl restart docker</code> 即可</li>
+</ol>
+<pre class="line-numbers language-yaml" data-language="yaml"><code class="language-yaml"><span class="token comment"># 增加下面的内容</span>
+"log<span class="token punctuation">-</span>driver"<span class="token punctuation">:</span><span class="token string">"json-file"</span><span class="token punctuation">,</span>
+<span class="token key atrule">"log-opts"</span><span class="token punctuation">:</span> <span class="token punctuation">&#123;</span>"max<span class="token punctuation">-</span>size"<span class="token punctuation">:</span><span class="token string">"1g"</span><span class="token punctuation">,</span> "max<span class="token punctuation">-</span>file"<span class="token punctuation">:</span><span class="token string">"3"</span><span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span></span></code></pre>]]></content>
+      <categories>
+        <category>工作log</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>Atomic源码解析</title>
+    <url>/posts/6961ed95.html</url>
+    <content><![CDATA[]]></content>
+      <categories>
+        <category>源码分析</category>
+        <category>hotspot</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>JMM</title>
+    <url>/posts/cff6dd61.html</url>
+    <content><![CDATA[<h3 id="引言"><a class="markdownIt-Anchor" href="#引言"></a> 引言</h3>
+<p>在Java这个世界中，如果把JVM比作一个运行java代码的生态土壤，那么JMM就是Java中的生态法则，它规定了这个世界的运行规则，定义了线程本地的变量读取存储，多线程之间的变量共享规则，并屏蔽了底层不同cpu架构，系统之间的差别，我们只需要遵守规范便可以开发出稳定可靠的单/多线程应用</p>
+<h3 id="介绍"><a class="markdownIt-Anchor" href="#介绍"></a> 介绍</h3>
+<p><a href="https://docs.oracle.com/javase/specs/jls/se23/html/jls-17.html#jls-17.4"><code>JMM(Java Memory Model)</code></a>：是 Java 语言规范定义的一组规则，用于协调多线程之间的内存访问操作，保证多线程程序在不同的硬件和操作系统平台上都能正确地执行。下面从几个方面对 JMM 进行完整的描述：</p>
+<h4 id="基本概念"><a class="markdownIt-Anchor" href="#基本概念"></a> 基本概念</h4>
+<p><code>主内存 (Main Memory)</code>: 主内存是所有线程共享的内存区域，它存储了Java的对象，静态变量，类信息，常量池信息<br />
+<code>工作内存(Working Memory)</code>: 每个线程都有自己独立的工作内存，它是线程私有的，线程在执行过程中，会将主内存的数据拷贝到自己的工作内存，操作完成后再将结果写回主内存</p>
+<blockquote>
+<p>定义上面的概念是解决不同平台以及不同硬件架构下的内存交互约束，在具体实现上主内存可以看作是RAM，而工作内存看作是寄存器，CPU缓存以及局部变量表(这个是栈帧中的一块区域，这块区域的大小编译期就可以确定下来)</p>
+</blockquote>
+<h4 id="工作内存之局部变量表"><a class="markdownIt-Anchor" href="#工作内存之局部变量表"></a> 工作内存之局部变量表</h4>
+<p>局部变量表是栈帧中开辟的一块确定大小的连续内存区域，用于存放方法中使用到的变量</p>
+<p><sup class="footnote-ref"><a href="#fn1" id="fnref1">[1]</a></sup>jdk8u hotspot <code>CppInterpreter.cpp</code> 是一个c++编写的字节码解释器，其中编写了如何关联局部变量表以及解释执行字节码指令的代码，接下来让我们看源码来了解方法的执行过程以及字节码解释执行的流程</p>
+<ol>
+<li>执行java方法的入口</li>
+</ol>
+<pre class="line-numbers language-c++" data-language="c++"><code class="language-c++">int CppInterpreter::normal_entry(Method* method, intptr_t UNUSED, TRAPS) &#123;  
+  JavaThread *thread &#x3D; (JavaThread *) THREAD;  
+  &#x2F;&#x2F; Allocate and initialize our frame. 
+  &#x2F;&#x2F; 为方法分配并初始化栈帧，其内部就会创建我们的局部变量表，以及设置bcp指针
+  InterpreterFrame *frame &#x3D; InterpreterFrame::build(method, CHECK_0);
+  &#x2F;&#x2F; 保存我们的栈帧到线程栈中  
+  thread-&gt;push_zero_frame(frame);  
+  &#x2F;&#x2F; Execute those bytecodes!  
+  &#x2F;&#x2F; 进入执行字节码的主入口
+  main_loop(0, THREAD);  
+  
+  &#x2F;&#x2F; No deoptimized frames on the stack  
+  return 0;  
+&#125;
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<ol start="2">
+<li>构建方法栈帧</li>
+</ol>
+<pre class="line-numbers language-c++" data-language="c++"><code class="language-c++">InterpreterFrame *InterpreterFrame::build(Method* const method, TRAPS) &#123;
+  JavaThread *thread &#x3D; (JavaThread *) THREAD;
+  ZeroStack *stack &#x3D; thread-&gt;zero_stack();
+
+  &#x2F;&#x2F; Calculate the size of the frame we&#39;ll build, including
+  &#x2F;&#x2F; any adjustments to the caller&#39;s frame that we&#39;ll make.
+  &#x2F;&#x2F; 方法内部局部变量数量
+  int extra_locals  &#x3D; 0;
+  &#x2F;&#x2F; 监视器占用空间大小
+  int monitor_words &#x3D; 0;
+  &#x2F;&#x2F; 局部变量表变量个数&#x2F;长度
+  int stack_words   &#x3D; 0;
+  &#x2F;&#x2F; 注意，上面的参数编译期就可以确定下来，可以通过javap -l .class 看到局部变量表信息
+  &#x2F;&#x2F; 所以这里只是取出来然后分配一个大小合适的局部变量表来存储方法中所操作的变量
+  if (!method-&gt;is_native()) &#123;
+	&#x2F;&#x2F; 局部变量表长度 - 方法参数 得到 方法内部定义的局部变量个数
+    extra_locals &#x3D; method-&gt;max_locals() - method-&gt;size_of_parameters();
+    &#x2F;&#x2F; 局部变量表solt个数
+    stack_words  &#x3D; method-&gt;max_stack();
+  &#125;
+  if (method-&gt;is_synchronized()) &#123;
+	&#x2F;&#x2F; 方法是同步的，那么需要分配一个solt存储
+    monitor_words &#x3D; frame::interpreter_frame_monitor_size();
+  &#125;
+	&#x2F;&#x2F; 检查是否栈溢出
+  stack-&gt;overflow_check(
+    extra_locals + header_words + monitor_words + stack_words, CHECK_NULL);
+
+  &#x2F;&#x2F; Adjust the caller&#39;s stack frame to accomodate any additional
+  &#x2F;&#x2F; local variables we have contiguously with our parameters.
+  &#x2F;&#x2F; push() -&gt; *(--sp) &#x3D; value 栈扩容（在操作系统里，栈的增长是向低地址增长的，而数据段是向上扩容的），预先占用局部变量的空间
+  for (int i &#x3D; 0; i &lt; extra_locals; i++)
+    stack-&gt;push(0);
+    &#x2F;&#x2F; 指向局部变量表最后一个槽位的指针
+  intptr_t *locals;
+  if (method-&gt;is_native())
+	  &#x2F;&#x2F; 如果是native方法,没有方法局部变量,只需要在栈帧有存放方法参数的空间即可
+    locals &#x3D; stack-&gt;sp() + (method-&gt;size_of_parameters() - 1);
+  else
+	  &#x2F;&#x2F; java方法 (注意：sp已经扩容了extra_locals个位置)
+    locals &#x3D; stack-&gt;sp() + (method-&gt;max_locals() - 1);
+
+  stack-&gt;push(0); &#x2F;&#x2F; next_frame, filled in later
+  intptr_t *fp &#x3D; stack-&gt;sp();
+  assert(fp - stack-&gt;sp() &#x3D;&#x3D; next_frame_off, &quot;should be&quot;);
+
+  stack-&gt;push(INTERPRETER_FRAME);
+  assert(fp - stack-&gt;sp() &#x3D;&#x3D; frame_type_off, &quot;should be&quot;);
+
+  interpreterState istate &#x3D;
+    (interpreterState) stack-&gt;alloc(sizeof(BytecodeInterpreter));
+  assert(fp - stack-&gt;sp() &#x3D;&#x3D; istate_off, &quot;should be&quot;);
+
+  istate-&gt;set_locals(locals);
+  istate-&gt;set_method(method);
+  istate-&gt;set_self_link(istate);
+  istate-&gt;set_prev_link(NULL);
+  istate-&gt;set_thread(thread);
+  istate-&gt;set_bcp(method-&gt;is_native() ? NULL : method-&gt;code_base());
+  istate-&gt;set_constants(method-&gt;constants()-&gt;cache());
+  istate-&gt;set_msg(BytecodeInterpreter::method_entry);
+  istate-&gt;set_oop_temp(NULL);
+  istate-&gt;set_mdx(NULL);
+  istate-&gt;set_callee(NULL);
+
+  istate-&gt;set_monitor_base((BasicObjectLock *) stack-&gt;sp());
+  if (method-&gt;is_synchronized()) &#123;
+    BasicObjectLock *monitor &#x3D;
+      (BasicObjectLock *) stack-&gt;alloc(monitor_words * wordSize);
+    oop object;
+    if (method-&gt;is_static())
+      object &#x3D; method-&gt;constants()-&gt;pool_holder()-&gt;java_mirror();
+    else
+      object &#x3D; (oop) (void*)locals[0];
+    monitor-&gt;set_obj(object);
+  &#125;
+
+  istate-&gt;set_stack_base(stack-&gt;sp());
+  istate-&gt;set_stack(stack-&gt;sp() - 1);
+  if (stack_words)
+    stack-&gt;alloc(stack_words * wordSize);
+  istate-&gt;set_stack_limit(stack-&gt;sp() - 1);
+
+  return (InterpreterFrame *) fp;
+&#125;<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<ol start="2">
+<li>主入口</li>
+</ol>
+<pre class="line-numbers language-c" data-language="c"><code class="language-c">
+
+<span class="token keyword">void</span> CppInterpreter<span class="token operator">::</span><span class="token function">main_loop</span><span class="token punctuation">(</span><span class="token keyword">int</span> recurse<span class="token punctuation">,</span> TRAPS<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+  # 当前java线程
+  JavaThread <span class="token operator">*</span>thread <span class="token operator">=</span> <span class="token punctuation">(</span>JavaThread <span class="token operator">*</span><span class="token punctuation">)</span> THREAD<span class="token punctuation">;</span>
+  <span class="token comment">// 线程栈</span>
+  ZeroStack <span class="token operator">*</span>stack <span class="token operator">=</span> thread<span class="token operator">-></span><span class="token function">zero_stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// If we are entering from a deopt we may need to call</span>
+  <span class="token comment">// ourself a few times in order to get to our frame.</span>
+  <span class="token comment">// 递归调用，不太理解</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>recurse<span class="token punctuation">)</span>
+    <span class="token function">main_loop</span><span class="token punctuation">(</span>recurse <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token comment">// 转换为解释器栈帧类型</span>
+  InterpreterFrame <span class="token operator">*</span>frame <span class="token operator">=</span> thread<span class="token operator">-></span><span class="token function">top_zero_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">as_interpreter_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token comment">// 解释器状态[该状态信息包含了执行方法所需要的一切信息，包括不仅限于当前线程，栈，栈帧，本地变量表，pc,sp 地址]</span>
+  interpreterState istate <span class="token operator">=</span> frame<span class="token operator">-></span><span class="token function">interpreter_state</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  Method<span class="token operator">*</span> method <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">method</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token class-name">intptr_t</span> <span class="token operator">*</span>result <span class="token operator">=</span> <span class="token constant">NULL</span><span class="token punctuation">;</span>
+  <span class="token keyword">int</span> result_slots <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+  <span class="token comment">// 循环里是因为有执行的指令条件不满足，从而进入对应的分支再执行指令</span>
+  <span class="token keyword">while</span> <span class="token punctuation">(</span>true<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    <span class="token comment">// We can set up the frame anchor with everything we want at</span>
+    <span class="token comment">// this point as we are thread_in_Java and no safepoints can</span>
+    <span class="token comment">// occur until we go to vm mode.  We do have to clear flags</span>
+    <span class="token comment">// on return from vm but that is it.</span>
+    <span class="token comment">// 设置java线程的sp以及fp寄存器，并且让java pc地址清空</span>
+    <span class="token comment">// src\cpu\zero\vm\javaFrameAnchor_zero.hpp#set(intptr_t* sp, address pc, ZeroFrame* fp)</span>
+    thread<span class="token operator">-></span><span class="token function">set_last_Java_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// Call the interpreter</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>JvmtiExport<span class="token operator">::</span><span class="token function">can_post_interpreter_events</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+      BytecodeInterpreter<span class="token operator">::</span><span class="token function">runWithChecks</span><span class="token punctuation">(</span>istate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">else</span>
+      <span class="token comment">// 这里就是执行字节码指令的关键之处，会</span>
+      BytecodeInterpreter<span class="token operator">::</span><span class="token function">run</span><span class="token punctuation">(</span>istate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">fixup_after_potential_safepoint</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// Clear the frame anchor</span>
+    thread<span class="token operator">-></span><span class="token function">reset_last_Java_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// Examine the message from the interpreter to decide what to do</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>call_method<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      Method<span class="token operator">*</span> callee <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">callee</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Trim back the stack to put the parameters at the top</span>
+      stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Make the call</span>
+      Interpreter<span class="token operator">::</span><span class="token function">invoke_method</span><span class="token punctuation">(</span>callee<span class="token punctuation">,</span> istate<span class="token operator">-></span><span class="token function">callee_entry_point</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token function">fixup_after_potential_safepoint</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Convert the result</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack</span><span class="token punctuation">(</span>stack<span class="token operator">-></span><span class="token function">sp</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Restore the stack</span>
+      stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack_limit</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Resume the interpreter</span>
+      istate<span class="token operator">-></span><span class="token function">set_msg</span><span class="token punctuation">(</span>BytecodeInterpreter<span class="token operator">::</span>method_resume<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>more_monitors<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token keyword">int</span> monitor_words <span class="token operator">=</span> frame<span class="token operator">::</span><span class="token function">interpreter_frame_monitor_size</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Allocate the space</span>
+      stack<span class="token operator">-></span><span class="token function">overflow_check</span><span class="token punctuation">(</span>monitor_words<span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span>HAS_PENDING_EXCEPTION<span class="token punctuation">)</span>
+        <span class="token keyword">break</span><span class="token punctuation">;</span>
+      stack<span class="token operator">-></span><span class="token function">alloc</span><span class="token punctuation">(</span>monitor_words <span class="token operator">*</span> wordSize<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Move the expression stack contents</span>
+      <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token class-name">intptr_t</span> <span class="token operator">*</span>p <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">;</span> p <span class="token operator">&lt;</span> istate<span class="token operator">-></span><span class="token function">stack_base</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> p<span class="token operator">++</span><span class="token punctuation">)</span>
+        <span class="token operator">*</span><span class="token punctuation">(</span>p <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span> <span class="token operator">=</span> <span class="token operator">*</span>p<span class="token punctuation">;</span>
+
+      <span class="token comment">// Move the expression stack pointers</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack_limit</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack_limit</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack_base</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack_base</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Zero the new monitor so the interpreter can find it.</span>
+      <span class="token punctuation">(</span><span class="token punctuation">(</span>BasicObjectLock <span class="token operator">*</span><span class="token punctuation">)</span> istate<span class="token operator">-></span><span class="token function">stack_base</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">set_obj</span><span class="token punctuation">(</span><span class="token constant">NULL</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Resume the interpreter</span>
+      istate<span class="token operator">-></span><span class="token function">set_msg</span><span class="token punctuation">(</span>BytecodeInterpreter<span class="token operator">::</span>got_monitors<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>return_from_method<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token comment">// Copy the result into the caller's frame</span>
+      result_slots <span class="token operator">=</span> type2size<span class="token punctuation">[</span>method<span class="token operator">-></span><span class="token function">result_type</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+      <span class="token function">assert</span><span class="token punctuation">(</span>result_slots <span class="token operator">>=</span> <span class="token number">0</span> <span class="token operator">&amp;&amp;</span> result_slots <span class="token operator">&lt;=</span> <span class="token number">2</span><span class="token punctuation">,</span> <span class="token string">"what?"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      result <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> result_slots<span class="token punctuation">;</span>
+      <span class="token keyword">break</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>throwing_exception<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token function">assert</span><span class="token punctuation">(</span>HAS_PENDING_EXCEPTION<span class="token punctuation">,</span> <span class="token string">"should do"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">break</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>do_osr<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token comment">// Unwind the current frame</span>
+      thread<span class="token operator">-></span><span class="token function">pop_zero_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Remove any extension of the previous frame</span>
+      <span class="token keyword">int</span> extra_locals <span class="token operator">=</span> method<span class="token operator">-></span><span class="token function">max_locals</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> method<span class="token operator">-></span><span class="token function">size_of_parameters</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>stack<span class="token operator">-></span><span class="token function">sp</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> extra_locals<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Jump into the OSR method</span>
+      Interpreter<span class="token operator">::</span><span class="token function">invoke_osr</span><span class="token punctuation">(</span>
+        method<span class="token punctuation">,</span> istate<span class="token operator">-></span><span class="token function">osr_entry</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> istate<span class="token operator">-></span><span class="token function">osr_buf</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">return</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token punctuation">&#123;</span>
+      <span class="token function">ShouldNotReachHere</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+  <span class="token punctuation">&#125;</span>
+
+  <span class="token comment">// Unwind the current frame</span>
+  thread<span class="token operator">-></span><span class="token function">pop_zero_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Pop our local variables</span>
+  stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>stack<span class="token operator">-></span><span class="token function">sp</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> method<span class="token operator">-></span><span class="token function">max_locals</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Push our result</span>
+  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> result_slots<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    <span class="token comment">// Adjust result to smaller</span>
+    <span class="token keyword">union</span> <span class="token punctuation">&#123;</span>
+      <span class="token class-name">intptr_t</span> res<span class="token punctuation">;</span>
+      jint res_jint<span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span><span class="token punctuation">;</span>
+    res <span class="token operator">=</span> result<span class="token punctuation">[</span><span class="token operator">-</span>i<span class="token punctuation">]</span><span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>result_slots <span class="token operator">==</span> <span class="token number">1</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      BasicType t <span class="token operator">=</span> method<span class="token operator">-></span><span class="token function">result_type</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token function">is_subword_type</span><span class="token punctuation">(</span>t<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+        res_jint <span class="token operator">=</span> <span class="token punctuation">(</span>jint<span class="token punctuation">)</span><span class="token function">narrow</span><span class="token punctuation">(</span>t<span class="token punctuation">,</span> res_jint<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token punctuation">&#125;</span>
+    <span class="token punctuation">&#125;</span>
+    stack<span class="token operator">-></span><span class="token function">push</span><span class="token punctuation">(</span>res<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<h4 id="编译优化"><a class="markdownIt-Anchor" href="#编译优化"></a> 编译优化</h4>
+<p>Java的字节码通常是由解释器和编译器相互配合执行的，为了让Java应用能够更快速的启动通常是解释器先发挥作用，逐行解释字节码指令转换成为对应平台的</p>
+<hr class="footnotes-sep" />
+<section class="footnotes">
+<ol class="footnotes-list">
+<li id="fn1" class="footnote-item"><p>CppInterpreter是用C++实现的字节码解释器，优点是实现相对简单容易理解，缺点就是执行慢，所以通常会使用TemplateInterpreter实现的模板解释器，它对每一个字节码指令都对应了一段汇编代码来实现，启动时会对字节码与对应的汇编代码入口做绑定，效率要高很多<br />
+<a href="https://book.douban.com/annotation/31407691/">第232页 7.2.1 Interpreter模块</a> <a href="#fnref1" class="footnote-backref">↩︎</a></p>
+</li>
+</ol>
+</section>
+]]></content>
+      <categories>
+        <category>源码分析</category>
+        <category>hotspot</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>Spring</title>
+    <url>/posts/6c92115f.html</url>
+    <content><![CDATA[]]></content>
+      <categories>
+        <category>学习</category>
+        <category>框架</category>
+        <category>spring</category>
+      </categories>
+  </entry>
+</search>
