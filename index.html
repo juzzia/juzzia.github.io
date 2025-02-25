@@ -1,0 +1,257 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Juzzia's Blog - 博客站</title><meta name="author" content="Juzzia"><meta name="copyright" content="Juzzia"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="分享技术，开发经验，学习总结">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Juzzia&#39;s Blog">
+<meta property="og:url" content="https://juzzia.github.io/index.html">
+<meta property="og:site_name" content="Juzzia&#39;s Blog">
+<meta property="og:description" content="分享技术，开发经验，学习总结">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://juzzia.github.io/img/avatar.jpg">
+<meta property="article:author" content="Juzzia">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://juzzia.github.io/img/avatar.jpg"><link rel="shortcut icon" href="/img/log.svg"><link rel="canonical" href="https://juzzia.github.io/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//hm.baidu.com"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=4.13.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.33/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?344a26e9d7e5894ce499ae53b475d975";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":5,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"prismjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":300},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: true,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: true,
+  islazyload: false,
+  isAnchor: true,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Juzzia\'s Blog',
+  isPost: false,
+  isHome: true,
+  isHighlightShrink: false,
+  isToc: false,
+  postUpdate: '2025-02-25 23:35:23'
+}</script><script>(win=>{
+      win.saveToLocal = {
+        set: (key, value, ttl) => {
+          if (ttl === 0) return
+          const now = Date.now()
+          const expiry = now + ttl * 86400000
+          const item = {
+            value,
+            expiry
+          }
+          localStorage.setItem(key, JSON.stringify(item))
+        },
+      
+        get: key => {
+          const itemStr = localStorage.getItem(key)
+      
+          if (!itemStr) {
+            return undefined
+          }
+          const item = JSON.parse(itemStr)
+          const now = Date.now()
+      
+          if (now > item.expiry) {
+            localStorage.removeItem(key)
+            return undefined
+          }
+          return item.value
+        }
+      }
+    
+      win.getScript = (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        script.onerror = reject
+        script.onload = script.onreadystatechange = function() {
+          const loadState = this.readyState
+          if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+          script.onload = script.onreadystatechange = null
+          resolve()
+        }
+
+        Object.keys(attr).forEach(key => {
+          script.setAttribute(key, attr[key])
+        })
+
+        document.head.appendChild(script)
+      })
+    
+      win.getCSS = (url, id = false) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onerror = reject
+        link.onload = link.onreadystatechange = function() {
+          const loadState = this.readyState
+          if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+          link.onload = link.onreadystatechange = null
+          resolve()
+        }
+        document.head.appendChild(link)
+      })
+    
+      win.activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+        if (t === 'dark') activateDarkMode()
+        else if (t === 'light') activateLightMode()
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+      const detectApple = () => {
+        if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+          document.documentElement.classList.add('apple')
+        }
+      }
+      detectApple()
+    })(window)</script><link rel="stylesheet" href="/css/callout/callout_blocks.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">9</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">6</div></a></div><hr class="custom-hr"/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> About</span></a></div></div></div></div><div class="page" id="body-wrap"><header class="full_page" id="page-header" style="background-image: url('https://s2.loli.net/2024/08/01/dvlsrBzaF8SUJ64.png')"><nav id="nav"><span id="blog-info"><a href="/" title="Juzzia's Blog"><span class="site-name">Juzzia's Blog</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> About</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="site-info"><h1 id="site-title">Juzzia's Blog</h1><div id="site_social_icons"><a class="social-icon" href="https://github.com/juzzia" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:juzzia@github.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div id="scroll-down"><i class="fas fa-angle-down scroll-down-effects"></i></div></header><main class="layout" id="content-inner"><div class="recent-posts" id="recent-posts"><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/628078e1.html" title="无题">无题</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2025-02-25T15:35:01.300Z" title="发表于 2025-02-25 23:35:01">2025-02-25</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/">hotspot</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/assets/">assets</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/assets/%E5%AD%97%E8%8A%82%E7%A0%81%E8%A7%A3%E9%87%8A%E5%99%A8-Interpreter/">字节码解释器 Interpreter</a></span><span class="article-meta tags"><span class="article-meta-separator">|</span><i class="fas fa-tag"></i><a class="article-meta__tags" href="/tags/excalidraw/">excalidraw</a></span></div><div class="content">⚠  Switch to EXCALIDRAW VIEW in the MORE OPTIONS menu of this document. ⚠ You can decompress Drawing data with the command palette: ‘Decompress current Excalidraw file’. For more info check in plugin settings under ‘Saving’
+ Excalidraw Data
+ Text Elements
+generate_all ^DYEjqClg
+generate_method_entry ^am6hVnlJ
+generate_entry ^QuzBrQMs
+normal_entry ^jn1kdYzk
+initialize ^iVgZWbmE
+BytecodeInterpreter::run(&amp;start_msg) ^lGQ8YNac
+%%
+ Drawing
+N4KAkARALgngDgUwgLgAQQQDwMYEMA2AlgCYBOuA7hADTgQBuCpAzoQPY ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/bcc098b4.html" title="Liunx 任务调度">Liunx 任务调度</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2025-02-24T13:52:00.000Z" title="发表于 2025-02-24 21:52:00">2025-02-24</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/liunx/">liunx</a></span></div><div class="content"></div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/991d833e.html" title="Liunx Futex">Liunx Futex</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2025-02-22T15:33:00.000Z" title="发表于 2025-02-22 23:33:00">2025-02-22</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/liunx/">liunx</a></span></div><div class="content"> 背景
+写这篇的文章的原因是因为在研究 java 的重量级锁中用到了 pthred_mutex_t作为互斥锁，pthred_mutex_t中加锁函数pthread_mutex_lock当竞争锁失败时便会通过系统调用futex_wait将当前线程阻塞等待到其内部的条件变量__lock上，设置线程的状态为INTERRUPTABLE，当使用解锁函数pthread_mutex_unlock时便会将__lock的值改变为0，然后通过系统调用futex_wake唤醒阻塞等待在条件变量__lock上的线程，将线程的状态改为可运行状态，当然，上面的流程是看完futex的源码后总结的一个大概的流程，为了搞清楚pthread_mutex_lock和pthread_mutex_unlock做了什么，我只能深究源码，解答心中疑惑
+ 锁
+在介绍futex之前，我想先在java层面去介绍为什么不在用户态去实现自己的锁机制，这样就能够避免由于系统调用导致线程上下文切换的开销，因为我在深究源码的过程中也出现了类似的疑惑，搜寻了很多博客以及AI但是并未给出我想要的回答，当看懂了futex的源码后我才懂了为什么不这样做， ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/f95e72b6.html" title="字节码解释器 Interpreter">字节码解释器 Interpreter</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2025-02-18T14:45:00.000Z" title="发表于 2025-02-18 22:45:00">2025-02-18</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/">hotspot</a></span><span class="article-meta tags"><span class="article-meta-separator">|</span><i class="fas fa-tag"></i><a class="article-meta__tags" href="/tags/%E6%BA%90%E7%A0%81/">源码</a><span class="article-meta-link">•</span><i class="fas fa-tag"></i><a class="article-meta__tags" href="/tags/JVM/">JVM</a></span></div><div class="content">
+半亩方塘一鉴开，天光云影共徘徊。 问渠那得清如许？为有源头活水来。
+
+ 介绍
+在计算机的世界中，如果又无法解决的问题，那么只需要加一个中间层，本文所介绍的解释器同样是遵循这个思想
+当我们的java代码通过编译器编译成为字节码后，此时就可以被jvm加载到内存中去解释执行了，为了支持跨平台，JVM会根据不同的硬件平台开发一个专属的解释器用于将字节码指令翻译成为对应平台的机器指令，或者采用一个通用的解释器作为中间层来解释字节码指令然后执行对应的逻辑。
+ Hotspot中的实现
+ Interpreter
+Hotspot是jvm的实现之一，在jdk8u中的Hotspot中有以下两个解释器
+
+cppInterpreter：CppInterpreter是用C实现的字节码解释器，对每一个字节码指令都编写了c方法来进行处理，优点是实现相对简单容易理解，缺点就是执行慢
+TemplateInterpreter：TemplateInterpreter实现的模板解释器，它对每一个字节码指令都对应了一段汇编代码来实现，启动时会将字节码指令与对应的汇编代码入口做绑定，当执行到一条字节码指令时会进入对应的汇编代码入 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/48bea92d.html" title="Hotspot源码剖析Java方法执行流程">Hotspot源码剖析Java方法执行流程</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2025-02-18T01:09:00.000Z" title="发表于 2025-02-18 09:09:00">2025-02-18</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/">hotspot</a></span></div><div class="content"> 1. 背景
+在学习JMM的过程中产生了对想探索栈帧内存分配的底层原理的想法，故此写下这篇博客以梳理和学习hotspot虚拟机是如何执行java方法并且分配栈帧空间的
+
+本篇博客是基于Hotspot的 CppInterpreter.cpp[^1] 所编写的，其他基于硬件架构而开发的汇编代码让人晦涩难懂，不过原理都一样的，所以无需纠结
+
+ 2. 相关概念
+ 特殊寄存器
+
+sp(stack pointer): 栈顶指针，每个线程都会有私有的栈，而这个指针指向线程栈的顶部，压栈出栈都依靠此指针的移动
+fp(frame pointer)：栈帧指针，jvm会给每个调用的方法分配一个栈帧，用于存储方法的局部变量，参数和返回地址等，而这个指针指向栈帧的起始地址
+bcp(byte code poiniter)：字节码指针，存储当前执行的Java字节码指令的位置，每执行完当前指令，就会更新为下一条要执行的字节码指令的位置
+pc(program counter pointer)：程序计数器，用于存储下一条即将要执行的指令的内存地址
+
+注意与上面的bcp是不同的作用，pc是cpu所使用的，而bcp是jvm所 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/cff6dd61.html" title="JMM">JMM</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2025-02-15T18:17:00.000Z" title="发表于 2025-02-16 02:17:00">2025-02-16</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/">hotspot</a></span></div><div class="content"> 引言
+在Java这个世界中，如果把JVM比作一个运行java代码的生态土壤，那么JMM就是Java中的生态法则，它规定了这个世界的运行规则，定义了线程本地的变量读取存储，多线程之间的变量共享规则，并屏蔽了底层不同cpu架构，系统之间的差别，我们只需要遵守规范便可以开发出稳定可靠的单/多线程应用
+ 介绍
+JMM(Java Memory Model)：是 Java 语言规范定义的一组规则，用于协调多线程之间的内存访问操作，保证多线程程序在不同的硬件和操作系统平台上都能正确地执行。下面从几个方面对 JMM 进行完整的描述：
+ 基本概念
+主内存 (Main Memory): 主内存是所有线程共享的内存区域，它存储了Java的对象，静态变量，类信息，常量池信息
+工作内存(Working Memory): 每个线程都有自己独立的工作内存，它是线程私有的，线程在执行过程中，会将主内存的数据拷贝到自己的工作内存，操作完成后再将结果写回主内存
+
+定义上面的概念是解决不同平台以及不同硬件架构下的内存交互约束，在具体实现上主内存可以看作是RAM，而工作内存看作是寄存器，CPU缓存以及局部变量表(这个是栈帧 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/6961ed95.html" title="Atomic源码解析">Atomic源码解析</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2025-02-15T18:16:00.000Z" title="发表于 2025-02-16 02:16:00">2025-02-16</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/">hotspot</a></span><span class="article-meta tags"><span class="article-meta-separator">|</span><i class="fas fa-tag"></i><a class="article-meta__tags" href="/tags/%E6%BA%90%E7%A0%81/">源码</a><span class="article-meta-link">•</span><i class="fas fa-tag"></i><a class="article-meta__tags" href="/tags/JVM/">JVM</a></span></div><div class="content"></div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/7e818be6.html" title="记录一次排查因线程WAITING导致应用假死的经历">记录一次排查因线程WAITING导致应用假死的经历</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2024-10-15T18:27:00.000Z" title="发表于 2024-10-16 02:27:00">2024-10-16</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%B7%A5%E4%BD%9Clog/">工作log</a></span></div><div class="content"> 背景
+在一个阳光明媚的下午，我正在悠哉游哉的在工位上畅游网络世界(摸鱼 😃 )，忽然心里有点不好的预感，果然哈，企业微信里产品经理弹了一条消息给我说测试服务器的系统登录进去获取不到菜单，我随即连接到测试服务器，心想这种问题重新运行下应该就没事了，到系统管理后台目录重新跑下 start.sh 脚本，想不到，竟然也被这问题折腾了一个小时，因此记录一下排查过程
+ 过程
+
+当重新运行了start.sh脚本后，系统正常运行成功，但是过一会就立马又是卡死状态，我打开浏览器登录进入系统，f12打开控制台看到获取菜单的请求一直在加载中，没有拿到响应，使用 tail 命令查看日志信息，请求日志和响应的日志信息也都能够正常输出
+心想这是什么玩意，响应也返回了为什么会卡死呢，猜测是不是网关出了问题，随即又去排查网关的日志，发现只输出了请求的日志，没有输出响应的日志，难道是网关的问题吗，随即remote debug网关服务(测试服务器在本地机房，为了方便调试开启了remote debug)，将断点打在了 NettyRoutingFilter#filter 方法中(NettyRoutingFilter是最终 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/09618d5b.html" title="Liunx编译OpenJdk 8U">Liunx编译OpenJdk 8U</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2024-07-20T05:32:00.000Z" title="发表于 2024-07-20 13:32:00">2024-07-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/">源码分析</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/">hotspot</a></span></div><div class="content">
+古人学问无遗力，少壮工夫老始成。 纸上得来终觉浅，绝知此事要躬行。
+
+ 背景
+在学习openjdk 8u源码时，对于CppInterpreter栈帧中局部变量表的分配始终疑惑不解，只能来调试源码来获得答案，因此有了这篇博客
+本机环境
+lsb_release -a
+	No LSB modules are available.
+	Distributor ID: Ubuntu
+	Description:    Ubuntu 22.04.5 LTS
+	Release:        22.04
+	Codename:       jammy
+架构：                    x86_64
+  CPU 运行模式：          32-bit, 64-bit
+ 流程
+ 下载 open jdk 7u
+编译某个版本的jdk需要用前一个版本来指定为为bootjdk，所以编译jdk8u需要使用jdk7u作为bootjdk来编译
+
+通过Java Archive Downloads - Java SE 7链接可以下载jdk7
+
+配置环境变量 修改 sudo vim /etc/profile
+# ...</div></div></div><nav id="pagination"><div class="pagination"><span class="page-number current">1</span></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Juzzia</div><div class="author-info__description">分享技术，开发经验，学习总结</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">9</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">6</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/juzzia"><i class="fab fa-github"></i><span>github</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/juzzia" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:juzzia@github.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/628078e1.html" title="无题">无题</a><time datetime="2025-02-25T15:35:01.300Z" title="发表于 2025-02-25 23:35:01">2025-02-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/bcc098b4.html" title="Liunx 任务调度">Liunx 任务调度</a><time datetime="2025-02-24T13:52:00.000Z" title="发表于 2025-02-24 21:52:00">2025-02-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/991d833e.html" title="Liunx Futex">Liunx Futex</a><time datetime="2025-02-22T15:33:00.000Z" title="发表于 2025-02-22 23:33:00">2025-02-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/f95e72b6.html" title="字节码解释器 Interpreter">字节码解释器 Interpreter</a><time datetime="2025-02-18T14:45:00.000Z" title="发表于 2025-02-18 22:45:00">2025-02-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/48bea92d.html" title="Hotspot源码剖析Java方法执行流程">Hotspot源码剖析Java方法执行流程</a><time datetime="2025-02-18T01:09:00.000Z" title="发表于 2025-02-18 09:09:00">2025-02-18</time></div></div></div></div><div class="card-widget card-categories"><div class="item-headline">
+            <i class="fas fa-folder-open"></i>
+            <span>分类</span>
+            
+            </div>
+            <ul class="card-category-list" id="aside-cat-list">
+            <li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E5%B7%A5%E4%BD%9Clog/"><span class="card-category-list-name">工作log</span><span class="card-category-list-count">1</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"><span class="card-category-list-name">源码分析</span><span class="card-category-list-count">8</span></a><ul class="card-category-list child"><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/"><span class="card-category-list-name">hotspot</span><span class="card-category-list-count">6</span></a><ul class="card-category-list child"><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/assets/"><span class="card-category-list-name">assets</span><span class="card-category-list-count">1</span></a><ul class="card-category-list child"><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/assets/%E5%AD%97%E8%8A%82%E7%A0%81%E8%A7%A3%E9%87%8A%E5%99%A8-Interpreter/"><span class="card-category-list-name">字节码解释器 Interpreter</span><span class="card-category-list-count">1</span></a></li></ul></li></ul></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/liunx/"><span class="card-category-list-name">liunx</span><span class="card-category-list-count">2</span></a></li></ul></li>
+            </ul></div><div class="card-widget card-tags"><div class="item-headline"><i class="fas fa-tags"></i><span>标签</span></div><div class="card-tag-cloud"><a href="/tags/excalidraw/" style="font-size: 1.1em; color: #007bff">excalidraw</a> <a href="/tags/%E6%BA%90%E7%A0%81/" style="font-size: 1.5em; color: #007bff">源码</a> <a href="/tags/JVM/" style="font-size: 1.5em; color: #007bff">JVM</a></div></div><div class="card-widget card-archives"><div class="item-headline"><i class="fas fa-archive"></i><span>归档</span></div><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2025/02/"><span class="card-archive-list-date">二月 2025</span><span class="card-archive-list-count">7</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/10/"><span class="card-archive-list-date">十月 2024</span><span class="card-archive-list-count">1</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2024/07/"><span class="card-archive-list-date">七月 2024</span><span class="card-archive-list-count">1</span></a></li></ul></div><div class="card-widget card-webinfo"><div class="item-headline"><i class="fas fa-chart-line"></i><span>网站资讯</span></div><div class="webinfo"><div class="webinfo-item"><div class="item-name">文章数目 :</div><div class="item-count">9</div></div><div class="webinfo-item"><div class="item-name">本站总字数 :</div><div class="item-count">16.9k</div></div><div class="webinfo-item"><div class="item-name">本站访客数 :</div><div class="item-count" id="busuanzi_value_site_uv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">本站总访问量 :</div><div class="item-count" id="busuanzi_value_site_pv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">最后更新时间 :</div><div class="item-count" id="last-push-date" data-lastPushDate="2025-02-25T15:35:23.224Z"><i class="fa-solid fa-spinner fa-spin"></i></div></div></div></div></div></div></main></div><div id="rightside"><div id="rightside-config-hide"><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.13.0"></script><script src="/js/main.js?v=4.13.0"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.33/dist/fancybox/fancybox.umd.min.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.autoSpacingPage()
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu@4.0.7/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.autoSpacingPage()
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><div class="js-pjax"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.js"></script><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/metingjs/dist/Meting.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=4.13.0"></script></div></div></body></html>
