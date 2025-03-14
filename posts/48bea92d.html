@@ -1,0 +1,337 @@
+<!DOCTYPE html><html lang=zh-CN data-theme=light><head><meta charset=UTF-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Hotspot源码剖析Java方法执行流程 | Juzzia's Blog</title><meta name=author content=Juzzia><meta name=copyright content=Juzzia><meta name=format-detection content="telephone=no"><meta name=theme-color content=ffffff><meta name=description content="1. 背景 在学习JMM的过程中产生了对想探索栈帧内存分配的底层原理的想法，故此写下这篇博客以梳理和学习hotspot虚拟机是如何执行java方法并且分配栈帧空间的  本篇博客是基于Hotspot的 CppInterpreter.cpp[^1] 所编写的，其他基于硬件架构而开发的汇编代码让人晦涩难懂，不过原理都一样的，所以无需纠结   2. 相关概念  特殊寄存器  sp(stack point"><meta property=og:type content=article><meta property=og:title content=Hotspot源码剖析Java方法执行流程><meta property=og:url content=https://juzzia.github.io/posts/48bea92d.html><meta property=og:site_name content="Juzzia&#39;s Blog"><meta property=og:description content="1. 背景 在学习JMM的过程中产生了对想探索栈帧内存分配的底层原理的想法，故此写下这篇博客以梳理和学习hotspot虚拟机是如何执行java方法并且分配栈帧空间的  本篇博客是基于Hotspot的 CppInterpreter.cpp[^1] 所编写的，其他基于硬件架构而开发的汇编代码让人晦涩难懂，不过原理都一样的，所以无需纠结   2. 相关概念  特殊寄存器  sp(stack point"><meta property=og:locale content=zh_CN><meta property=og:image content=https://juzzia.github.io/img/avatar.jpg><meta property=article:published_time content=2025-02-18T01:09:00.000Z><meta property=article:modified_time content=2025-02-18T11:16:00.000Z><meta property=article:author content=Juzzia><meta name=twitter:card content=summary><meta name=twitter:image content=https://juzzia.github.io/img/avatar.jpg><link rel="shortcut icon" href=/img/log.svg><link rel=canonical href=https://juzzia.github.io/posts/48bea92d.html><link rel=preconnect href=//cdn.jsdelivr.net><link rel=preconnect href=//hm.baidu.com><link rel=preconnect href=//busuanzi.ibruce.info><meta name=msvalidate.01 content=606EBFCBDED9F21417F108AFF320F465><link rel=stylesheet href="/css/index.css?v=4.13.0"><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.33/dist/fancybox/fancybox.min.css media=print onload='this.media="all"'><script>var _hmt=_hmt||[];(()=>{var e=document.createElement("script"),t=(e.src="https://hm.baidu.com/hm.js?344a26e9d7e5894ce499ae53b475d975",document.getElementsByTagName("script")[0]);t.parentNode.insertBefore(e,t)})()</script><script>let GLOBAL_CONFIG={root:"/",algolia:void 0,localSearch:{path:"/search.xml",preload:!1,top_n_per_article:5,unescape:!1,languages:{hits_empty:"找不到您查询的内容：${query}",hits_stats:"共找到 ${hits} 篇文章"}},translate:void 0,noticeOutdate:void 0,highlight:{plugin:"prismjs",highlightCopy:!0,highlightLang:!0,highlightHeightLimit:300},copy:{success:"复制成功",error:"复制错误",noSupport:"浏览器不支持"},relativeDate:{homepage:!0,post:!1},runtime:"",dateSuffix:{just:"刚刚",min:"分钟前",hour:"小时前",day:"天前",month:"个月前"},copyright:void 0,lightbox:"fancybox",Snackbar:void 0,infinitegrid:{js:"https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.1/dist/infinitegrid.min.js",buttonText:"加载更多"},isPhotoFigcaption:!0,islazyload:!1,isAnchor:!0,percent:{toc:!0,rightside:!0},autoDarkmode:!1}</script><script id=config-diff>var GLOBAL_CONFIG_SITE={title:"Hotspot源码剖析Java方法执行流程",isPost:!0,isHome:!1,isHighlightShrink:!1,isToc:!0,postUpdate:"2025-02-18 19:16:00"}</script><script>(e=>{e.saveToLocal={set:(e,t,a)=>{var o;0!==a&&(o=Date.now(),localStorage.setItem(e,JSON.stringify({value:t,expiry:o+864e5*a})))},get:e=>{var t=localStorage.getItem(e);if(t){t=JSON.parse(t);if(!(Date.now()>t.expiry))return t.value;localStorage.removeItem(e)}}},e.getScript=(o,n={})=>new Promise((t,e)=>{let a=document.createElement("script");a.src=o,a.async=!0,a.onerror=e,a.onload=a.onreadystatechange=function(){var e=this.readyState;e&&"loaded"!==e&&"complete"!==e||(a.onload=a.onreadystatechange=null,t())},Object.keys(n).forEach(e=>{a.setAttribute(e,n[e])}),document.head.appendChild(a)}),e.getCSS=(o,n=!1)=>new Promise((t,e)=>{let a=document.createElement("link");a.rel="stylesheet",a.href=o,n&&(a.id=n),a.onerror=e,a.onload=a.onreadystatechange=function(){var e=this.readyState;e&&"loaded"!==e&&"complete"!==e||(a.onload=a.onreadystatechange=null,t())},document.head.appendChild(a)}),e.activateDarkMode=()=>{document.documentElement.setAttribute("data-theme","dark"),null!==document.querySelector('meta[name="theme-color"]')&&document.querySelector('meta[name="theme-color"]').setAttribute("content","#0d0d0d")},e.activateLightMode=()=>{document.documentElement.setAttribute("data-theme","light"),null!==document.querySelector('meta[name="theme-color"]')&&document.querySelector('meta[name="theme-color"]').setAttribute("content","ffffff")};e=saveToLocal.get("theme"),"dark"===e?activateDarkMode():"light"===e&&activateLightMode(),e=saveToLocal.get("aside-status");void 0!==e&&("hide"===e?document.documentElement.classList.add("hide-aside"):document.documentElement.classList.remove("hide-aside"));/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)&&document.documentElement.classList.add("apple")})(window)</script><link rel=stylesheet href=/css/callout/callout_blocks.css><link rel=stylesheet href=/css/mermaid.css><link rel=stylesheet href=/css/custom.css><meta name=generator content="Hexo 7.3.0"></head><body><div id=web_bg></div><div id=sidebar><div id=menu-mask></div><div id=sidebar-menus><div class="avatar-img is-center"><img src=/img/avatar.jpg onerror='onerror=null,src="/img/friend_404.gif"' alt=avatar></div><div class="sidebar-site-data site-data is-center"><a href=/archives/ ><div class=headline>文章</div><div class=length-num>10</div></a><a href=/tags/ ><div class=headline>标签</div><div class=length-num>4</div></a><a href=/categories/ ><div class=headline>分类</div><div class=length-num>5</div></a></div><hr class=custom-hr><div class=menus_items><div class=menus_item><a class=site-page href=/ ><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class=menus_item><a class=site-page href=/archives/ ><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class=menus_item><a class=site-page href=/tags/ ><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class=menus_item><a class=site-page href=/categories/ ><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class=menus_item><a class=site-page href=/about/ ><i class="fa-fw fas fa-heart"></i><span> About</span></a></div></div></div></div><div class=post id=body-wrap><header class=not-top-img id=page-header><nav id=nav><span id=blog-info><a href=/ title="Juzzia's Blog"><span class=site-name>Juzzia's Blog</span></a></span><div id=menus><div id=search-button><a class="site-page social-icon search" href=javascript:void(0);><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class=menus_items><div class=menus_item><a class=site-page href=/ ><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class=menus_item><a class=site-page href=/archives/ ><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class=menus_item><a class=site-page href=/tags/ ><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class=menus_item><a class=site-page href=/categories/ ><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class=menus_item><a class=site-page href=/about/ ><i class="fa-fw fas fa-heart"></i><span> About</span></a></div></div><div id=toggle-menu><a class=site-page href=javascript:void(0);><i class="fas fa-bars fa-fw"></i></a></div></div></nav></header><main class=layout id=content-inner><div id=post><div id=post-info><h1 class=post-title>Hotspot源码剖析Java方法执行流程</h1><div id=post-meta><div class=meta-firstline><span class=post-meta-date><i class="fa-fw post-meta-icon far fa-calendar-alt"></i><span class=post-meta-label>发表于</span><time datetime=2025-02-18T01:09:00.000Z title="发表于 2025-02-18 09:09:00">2025-02-18</time></span><span class=post-meta-categories><span class=post-meta-separator>|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class=post-meta-categories href=/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/ >源码分析</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class=post-meta-categories href=/categories/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/hotspot/ >hotspot</a></span></div><div class=meta-secondline><span class=post-meta-separator>|</span><span class=post-meta-wordcount><i class="far fa-file-word fa-fw post-meta-icon"></i><span class=post-meta-label>字数总计:</span><span class=word-count>2.5k</span><span class=post-meta-separator>|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class=post-meta-label>阅读时长:</span><span>11分钟</span></span><span class=post-meta-separator>|</span><span class=post-meta-pv-cv id="" data-flag-title=Hotspot源码剖析Java方法执行流程><i class="far fa-eye fa-fw post-meta-icon"></i><span class=post-meta-label>阅读量:</span><span id=busuanzi_value_page_pv><i class="fa-solid fa-spinner fa-spin"></i></span></span><span class=post-meta-separator>|</span><span class=post-meta-commentcount><i class="far fa-comments fa-fw post-meta-icon"></i><span class=post-meta-label>评论数:</span><a href=/posts/48bea92d.html#post-comment><span class=gsc-comments-count><i class="fa-solid fa-spinner fa-spin"></i></span></a></span></div></div></div><article class=post-content id=article-container><h4 id=1-背景><a class=markdownIt-Anchor href=#1-背景></a> 1. 背景</h4><p>在学习JMM的过程中产生了对想探索栈帧内存分配的底层原理的想法，故此写下这篇博客以梳理和学习hotspot虚拟机是如何执行java方法并且分配栈帧空间的</p><blockquote><p>本篇博客是基于Hotspot的 CppInterpreter.cpp[^1] 所编写的，其他基于硬件架构而开发的汇编代码让人晦涩难懂，不过原理都一样的，所以无需纠结</p></blockquote><h4 id=2-相关概念><a class=markdownIt-Anchor href=#2-相关概念></a> 2. 相关概念</h4><h5 id=特殊寄存器><a class=markdownIt-Anchor href=#特殊寄存器></a> 特殊寄存器</h5><ul><li><code>sp(stack pointer)</code>: 栈顶指针，每个线程都会有私有的栈，而这个指针指向线程栈的顶部，压栈出栈都依靠此指针的移动</li><li><code>fp(frame pointer)</code>：栈帧指针，jvm会给每个调用的方法分配一个栈帧，用于存储方法的局部变量，参数和返回地址等，而这个指针指向栈帧的起始地址</li><li><code>bcp(byte code poiniter)</code>：字节码指针，存储当前执行的Java字节码指令的位置，每执行完当前指令，就会更新为下一条要执行的字节码指令的位置</li><li><code>pc(program counter pointer)</code>：程序计数器，用于存储下一条即将要执行的指令的内存地址<ul><li>注意与上面的bcp是不同的作用，pc是cpu所使用的，而bcp是jvm所使用的，一条字节码指令对应着底层多条指令</li></ul></li></ul><h5 id=调用方法字节码指令><a class=markdownIt-Anchor href=#调用方法字节码指令></a> 调用方法字节码指令</h5><p>在java中调用方法的代码根据不同的情况会被编译成为不同的字节码指令，有如下4种</p><ul><li><code>invokevirtual</code>: 虚方法，通过对象引用调用实例方法，虚方法只有在运行时根据对象的实际类型才能确定具体调用哪个类的方法</li><li><code>invokeinterface</code>：接口方法，通过接口引用调用接口方法</li><li><code>invokespecial</code>：特殊方法调用，三种情况：实例构造方法，私有方法，通过super关键字调用父类方法</li><li><code>invokestatic</code>：调用类的静态方法</li></ul><h3 id=3-源码剖析><a class=markdownIt-Anchor href=#3-源码剖析></a> 3. 源码剖析</h3><blockquote><p>基于jdk8u cppInterpreter.cpp解析代码，不过鉴于由Gary Benson贡献的代码截至目前最新版<code>25</code>并未发生大的改变(不过命名从cpp前缀修改为zero了，所以若是查看最新版请注意替换)</p></blockquote><h4 id=方法入口><a class=markdownIt-Anchor href=#方法入口></a> 方法入口</h4><p>hotspot会对执行的java方法进行分类<sup class=footnote-ref><a href=#fn1 id=fnref1>[1]</a></sup>，对于普通的方法通常对应着两种</p><ul><li><code>zerolocals</code>：表示方法需要进行局部变量初始化，以存储方法参数和方法内局部变量</li><li><code>zerolocals_synchronized</code>：和上面一样，只是方法上增加了synchronized修饰<br>hotspot解释器会对这两种方法会生成一个<code>EntryPoint</code>(根据架构不同可能会生成不同的<code>EntryPoint</code>)，后续执行此类的方法直接从该<code>EntryPoint</code>进入执行 (其实就是策略模式)</li></ul><p>创建<code>EntryPoint</code>的调用链<br>如果是Threads::create_vm -&gt; init_globals() -&gt; stubRoutines_init1() -&gt; StubRoutines::initialize2() -&gt; StubGenerator_generate(&amp;buffer, true) -&gt; generate_all() -&gt; generate_method_entry<br><code>stubGenerator_zero.cpp</code></p><pre class="line-numbers language-C++" data-language=C++><code class=language-C++>&#x2F;&#x2F; 如果是其他的解释器,此方法会对各种类型的方法创建 EntryPoint，但当前是c++编写的解释器，所以直接用c++代码去执行java代码,没有为其生成 EntryPoint
+
+#undef method_entry
+
+
+  void generate_initial() &#123;
+    &#x2F;&#x2F; Generates all stubs and initializes the entry points
+
+    &#x2F;&#x2F; entry points that exist in all platforms Note: This is code
+    &#x2F;&#x2F; that could be shared among different platforms - however the
+    &#x2F;&#x2F; benefit seems to be smaller than the disadvantage of having a
+    &#x2F;&#x2F; much more complicated generator structure. See also comment in
+    &#x2F;&#x2F; stubRoutines.hpp.
+
+    StubRoutines::_forward_exception_entry   &#x3D; ShouldNotCallThisStub();
+    &#x2F;**
+     * call_stub 函数地址
+     *&#x2F;
+    StubRoutines::_call_stub_entry           &#x3D; (address) call_stub;
+    StubRoutines::_catch_exception_entry     &#x3D; ShouldNotCallThisStub();
+
+    &#x2F;&#x2F; atomic calls
+    StubRoutines::_atomic_xchg_entry         &#x3D; ShouldNotCallThisStub();
+    StubRoutines::_atomic_xchg_ptr_entry     &#x3D; ShouldNotCallThisStub();
+    StubRoutines::_atomic_cmpxchg_entry      &#x3D; ShouldNotCallThisStub();
+    StubRoutines::_atomic_cmpxchg_ptr_entry  &#x3D; ShouldNotCallThisStub();
+    StubRoutines::_atomic_cmpxchg_long_entry &#x3D; ShouldNotCallThisStub();
+    StubRoutines::_atomic_add_entry          &#x3D; ShouldNotCallThisStub();
+    StubRoutines::_atomic_add_ptr_entry      &#x3D; ShouldNotCallThisStub();
+    StubRoutines::_fence_entry               &#x3D; ShouldNotCallThisStub();
+
+    &#x2F;&#x2F; amd64 does this here, sparc does it in generate_all()
+    StubRoutines::_handler_for_unsafe_access_entry &#x3D;
+      ShouldNotCallThisStub();
+  &#125;
+   
+&#125;<span aria-hidden=true class=line-numbers-rows><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><p>可以看下stubGenerator_template</p><p>在cppInter</p><pre class="line-numbers language-c++" data-language=c++><code class=language-c++>void CppInterpreterGenerator::generate_all() &#123;
+  AbstractInterpreterGenerator::generate_all();
+
+  &#123; CodeletMark cm(_masm, &quot;result handlers for native calls&quot;);
+#define method_entry(kind) Interpreter::_entry_table[Interpreter::kind] &#x3D; generate_method_entry(Interpreter::kind)
+
+  &#123; CodeletMark cm(_masm, &quot;(kind &#x3D; frame_manager)&quot;);
+    &#x2F;&#x2F; all non-native method kinds
+    method_entry(zerolocals);
+    method_entry(zerolocals_synchronized);
+    method_entry(empty);
+    method_entry(accessor);
+    method_entry(abstract);
+    method_entry(java_lang_math_sin   );
+    method_entry(java_lang_math_cos   );
+    method_entry(java_lang_math_tan   );
+    method_entry(java_lang_math_abs   );
+    method_entry(java_lang_math_sqrt  );
+    method_entry(java_lang_math_log   );
+    method_entry(java_lang_math_log10 );
+    method_entry(java_lang_math_pow );
+    method_entry(java_lang_math_exp );
+    method_entry(java_lang_ref_reference_get);
+
+    initialize_method_handle_entries();
+
+    Interpreter::_native_entry_begin &#x3D; Interpreter::code()-&gt;code_end();
+    method_entry(native);
+    method_entry(native_synchronized);
+    Interpreter::_native_entry_end &#x3D; Interpreter::code()-&gt;code_end();
+  &#125;<span aria-hidden=true class=line-numbers-rows><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><pre class="line-numbers language-C++" data-language=C++><code class=language-C++>
+address AbstractInterpreterGenerator::generate_method_entry(
+    AbstractInterpreter::MethodKind kind) &#123;
+  address entry_point &#x3D; NULL;
+
+  switch (kind) &#123;
+  case Interpreter::zerolocals:
+  case Interpreter::zerolocals_synchronized:
+    break;
+  &#x2F;&#x2F; ... 省略了其他分支条件的判断
+  &#125;
+
+  &#x2F;&#x2F; 由于是zerolocals或者zerolocals_synchronied
+  if (entry_point &#x3D;&#x3D; NULL) 
+    entry_point &#x3D; ((InterpreterGenerator*) this)-&gt;generate_normal_entry(false);
+
+  return entry_point;
+&#125;
+
+address InterpreterGenerator::generate_normal_entry(bool synchronized) &#123;
+  assert(synchronized &#x3D;&#x3D; false, &quot;should be&quot;);
+
+  return generate_entry((address) CppInterpreter::normal_entry);
+&#125;
+<span aria-hidden=true class=line-numbers-rows><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><h4 id=分析java方法执行流程><a class=markdownIt-Anchor href=#分析java方法执行流程></a> 分析java方法执行流程</h4><ol><li>调用java方法入口<br><code>javaCalls.cpp#call_virtual</code></li></ol><pre class="line-numbers language-c++" data-language=c++><code class=language-c++>void JavaCalls::call_virtual(JavaValue* result, KlassHandle spec_klass, Symbol* name, Symbol* signature, JavaCallArguments* args, TRAPS) &#123;
+  CallInfo callinfo;
+  Handle receiver &#x3D; args-&gt;receiver();
+  KlassHandle recvrKlass(THREAD, receiver.is_null() ? (Klass*)NULL : receiver-&gt;klass());
+  LinkResolver::resolve_virtual_call(
+          callinfo, receiver, recvrKlass, spec_klass, name, signature,
+          KlassHandle(), false, true, CHECK);
+  methodHandle method &#x3D; callinfo.selected_method();
+  assert(method.not_null(), &quot;should have thrown exception&quot;);
+
+  &#x2F;&#x2F; Invoke the method
+  JavaCalls::call(result, method, args, CHECK);
+&#125;<span aria-hidden=true class=line-numbers-rows><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><pre class="line-numbers language-c++" data-language=c++><code class=language-c++>int CppInterpreter::normal_entry(Method* method, intptr_t UNUSED, TRAPS) &#123;  
+  JavaThread *thread &#x3D; (JavaThread *) THREAD;  
+  &#x2F;&#x2F; Allocate and initialize our frame. 
+  &#x2F;&#x2F; 为方法分配并初始化栈帧，其内部就会创建我们的局部变量表，以及设置bcp指针
+  InterpreterFrame *frame &#x3D; InterpreterFrame::build(method, CHECK_0);
+  &#x2F;&#x2F; 保存我们的栈帧到线程栈中  
+  thread-&gt;push_zero_frame(frame);  
+  &#x2F;&#x2F; Execute those bytecodes!  
+  &#x2F;&#x2F; 进入执行字节码的主入口
+  main_loop(0, THREAD);  
+  
+  &#x2F;&#x2F; No deoptimized frames on the stack  
+  return 0;  
+&#125;
+<span aria-hidden=true class=line-numbers-rows><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><ol start=2><li>构建方法栈帧</li></ol><pre class="line-numbers language-c++" data-language=c++><code class=language-c++>InterpreterFrame *InterpreterFrame::build(Method* const method, TRAPS) &#123;
+  JavaThread *thread &#x3D; (JavaThread *) THREAD;
+  ZeroStack *stack &#x3D; thread-&gt;zero_stack();
+
+  &#x2F;&#x2F; Calculate the size of the frame we&#39;ll build, including
+  &#x2F;&#x2F; any adjustments to the caller&#39;s frame that we&#39;ll make.
+  &#x2F;&#x2F; 方法内部局部变量数量
+  int extra_locals  &#x3D; 0;
+  &#x2F;&#x2F; 监视器占用空间大小
+  int monitor_words &#x3D; 0;
+  &#x2F;&#x2F; 局部变量表变量个数&#x2F;长度
+  int stack_words   &#x3D; 0;
+  &#x2F;&#x2F; 注意，上面的参数编译期就可以确定下来，可以通过javap -l .class 看到局部变量表信息
+  &#x2F;&#x2F; 所以这里只是取出来然后分配一个大小合适的局部变量表来存储方法中所操作的变量
+  if (!method-&gt;is_native()) &#123;
+	&#x2F;&#x2F; 局部变量表长度 - 方法参数 得到 方法内部定义的局部变量个数
+    extra_locals &#x3D; method-&gt;max_locals() - method-&gt;size_of_parameters();
+    &#x2F;&#x2F; 局部变量表solt个数
+    stack_words  &#x3D; method-&gt;max_stack();
+  &#125;
+  if (method-&gt;is_synchronized()) &#123;
+	&#x2F;&#x2F; 方法是同步的，那么需要分配一个solt存储
+    monitor_words &#x3D; frame::interpreter_frame_monitor_size();
+  &#125;
+	&#x2F;&#x2F; 检查是否栈溢出
+  stack-&gt;overflow_check(
+    extra_locals + header_words + monitor_words + stack_words, CHECK_NULL);
+
+  &#x2F;&#x2F; Adjust the caller&#39;s stack frame to accomodate any additional
+  &#x2F;&#x2F; local variables we have contiguously with our parameters.
+  &#x2F;&#x2F; 预先填充
+  for (int i &#x3D; 0; i &lt; extra_locals; i++)
+    stack-&gt;push(0);
+    &#x2F;&#x2F; 分配局部变量表空间了
+  intptr_t *locals;
+  if (method-&gt;is_native())
+	  &#x2F;&#x2F; 入股是native方法
+    locals &#x3D; stack-&gt;sp() + (method-&gt;size_of_parameters() - 1);
+  else
+    locals &#x3D; stack-&gt;sp() + (method-&gt;max_locals() - 1);
+
+  stack-&gt;push(0); &#x2F;&#x2F; next_frame, filled in later
+  intptr_t *fp &#x3D; stack-&gt;sp();
+  assert(fp - stack-&gt;sp() &#x3D;&#x3D; next_frame_off, &quot;should be&quot;);
+
+  stack-&gt;push(INTERPRETER_FRAME);
+  assert(fp - stack-&gt;sp() &#x3D;&#x3D; frame_type_off, &quot;should be&quot;);
+
+  interpreterState istate &#x3D;
+    (interpreterState) stack-&gt;alloc(sizeof(BytecodeInterpreter));
+  assert(fp - stack-&gt;sp() &#x3D;&#x3D; istate_off, &quot;should be&quot;);
+
+  istate-&gt;set_locals(locals);
+  istate-&gt;set_method(method);
+  istate-&gt;set_self_link(istate);
+  istate-&gt;set_prev_link(NULL);
+  istate-&gt;set_thread(thread);
+  istate-&gt;set_bcp(method-&gt;is_native() ? NULL : method-&gt;code_base());
+  istate-&gt;set_constants(method-&gt;constants()-&gt;cache());
+  istate-&gt;set_msg(BytecodeInterpreter::method_entry);
+  istate-&gt;set_oop_temp(NULL);
+  istate-&gt;set_mdx(NULL);
+  istate-&gt;set_callee(NULL);
+
+  istate-&gt;set_monitor_base((BasicObjectLock *) stack-&gt;sp());
+  if (method-&gt;is_synchronized()) &#123;
+    BasicObjectLock *monitor &#x3D;
+      (BasicObjectLock *) stack-&gt;alloc(monitor_words * wordSize);
+    oop object;
+    if (method-&gt;is_static())
+      object &#x3D; method-&gt;constants()-&gt;pool_holder()-&gt;java_mirror();
+    else
+      object &#x3D; (oop) (void*)locals[0];
+    monitor-&gt;set_obj(object);
+  &#125;
+
+  istate-&gt;set_stack_base(stack-&gt;sp());
+  istate-&gt;set_stack(stack-&gt;sp() - 1);
+  if (stack_words)
+    stack-&gt;alloc(stack_words * wordSize);
+  istate-&gt;set_stack_limit(stack-&gt;sp() - 1);
+
+  return (InterpreterFrame *) fp;
+&#125;<span aria-hidden=true class=line-numbers-rows><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><ol start=4><li>主入口</li></ol><pre class="line-numbers language-c" data-language=c><code class=language-c>
+
+<span class="token keyword">void</span> CppInterpreter<span class="token operator">::</span><span class="token function">main_loop</span><span class="token punctuation">(</span><span class="token keyword">int</span> recurse<span class="token punctuation">,</span> TRAPS<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+  # 当前java线程
+  JavaThread <span class="token operator">*</span>thread <span class="token operator">=</span> <span class="token punctuation">(</span>JavaThread <span class="token operator">*</span><span class="token punctuation">)</span> THREAD<span class="token punctuation">;</span>
+  <span class="token comment">// 线程栈</span>
+  ZeroStack <span class="token operator">*</span>stack <span class="token operator">=</span> thread<span class="token operator">-></span><span class="token function">zero_stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// If we are entering from a deopt we may need to call</span>
+  <span class="token comment">// ourself a few times in order to get to our frame.</span>
+  <span class="token comment">// 递归调用，不太理解</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span>recurse<span class="token punctuation">)</span>
+    <span class="token function">main_loop</span><span class="token punctuation">(</span>recurse <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token comment">// 转换为解释器栈帧类型</span>
+  InterpreterFrame <span class="token operator">*</span>frame <span class="token operator">=</span> thread<span class="token operator">-></span><span class="token function">top_zero_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">as_interpreter_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token comment">// 解释器状态[该状态信息包含了执行方法所需要的一切信息，包括不仅限于当前线程，栈，栈帧，本地变量表，pc,sp 地址]</span>
+  interpreterState istate <span class="token operator">=</span> frame<span class="token operator">-></span><span class="token function">interpreter_state</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  Method<span class="token operator">*</span> method <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">method</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token class-name">intptr_t</span> <span class="token operator">*</span>result <span class="token operator">=</span> <span class="token constant">NULL</span><span class="token punctuation">;</span>
+  <span class="token keyword">int</span> result_slots <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+  <span class="token comment">// 循环里是因为有执行的指令条件不满足，从而进入对应的分支再执行指令</span>
+  <span class="token keyword">while</span> <span class="token punctuation">(</span>true<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    <span class="token comment">// We can set up the frame anchor with everything we want at</span>
+    <span class="token comment">// this point as we are thread_in_Java and no safepoints can</span>
+    <span class="token comment">// occur until we go to vm mode.  We do have to clear flags</span>
+    <span class="token comment">// on return from vm but that is it.</span>
+    <span class="token comment">// 设置java线程的sp以及fp寄存器，并且让java pc地址清空</span>
+    <span class="token comment">// src\cpu\zero\vm\javaFrameAnchor_zero.hpp#set(intptr_t* sp, address pc, ZeroFrame* fp)</span>
+    thread<span class="token operator">-></span><span class="token function">set_last_Java_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// Call the interpreter</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>JvmtiExport<span class="token operator">::</span><span class="token function">can_post_interpreter_events</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+      BytecodeInterpreter<span class="token operator">::</span><span class="token function">runWithChecks</span><span class="token punctuation">(</span>istate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">else</span>
+      <span class="token comment">// 这里就是执行字节码指令的关键之处，会</span>
+      BytecodeInterpreter<span class="token operator">::</span><span class="token function">run</span><span class="token punctuation">(</span>istate<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">fixup_after_potential_safepoint</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// Clear the frame anchor</span>
+    thread<span class="token operator">-></span><span class="token function">reset_last_Java_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+    <span class="token comment">// Examine the message from the interpreter to decide what to do</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>call_method<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      Method<span class="token operator">*</span> callee <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">callee</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Trim back the stack to put the parameters at the top</span>
+      stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Make the call</span>
+      Interpreter<span class="token operator">::</span><span class="token function">invoke_method</span><span class="token punctuation">(</span>callee<span class="token punctuation">,</span> istate<span class="token operator">-></span><span class="token function">callee_entry_point</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token function">fixup_after_potential_safepoint</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Convert the result</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack</span><span class="token punctuation">(</span>stack<span class="token operator">-></span><span class="token function">sp</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Restore the stack</span>
+      stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack_limit</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Resume the interpreter</span>
+      istate<span class="token operator">-></span><span class="token function">set_msg</span><span class="token punctuation">(</span>BytecodeInterpreter<span class="token operator">::</span>method_resume<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>more_monitors<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token keyword">int</span> monitor_words <span class="token operator">=</span> frame<span class="token operator">::</span><span class="token function">interpreter_frame_monitor_size</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Allocate the space</span>
+      stack<span class="token operator">-></span><span class="token function">overflow_check</span><span class="token punctuation">(</span>monitor_words<span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span>HAS_PENDING_EXCEPTION<span class="token punctuation">)</span>
+        <span class="token keyword">break</span><span class="token punctuation">;</span>
+      stack<span class="token operator">-></span><span class="token function">alloc</span><span class="token punctuation">(</span>monitor_words <span class="token operator">*</span> wordSize<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Move the expression stack contents</span>
+      <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token class-name">intptr_t</span> <span class="token operator">*</span>p <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">;</span> p <span class="token operator">&lt;</span> istate<span class="token operator">-></span><span class="token function">stack_base</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> p<span class="token operator">++</span><span class="token punctuation">)</span>
+        <span class="token operator">*</span><span class="token punctuation">(</span>p <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span> <span class="token operator">=</span> <span class="token operator">*</span>p<span class="token punctuation">;</span>
+
+      <span class="token comment">// Move the expression stack pointers</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack_limit</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack_limit</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      istate<span class="token operator">-></span><span class="token function">set_stack_base</span><span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">stack_base</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> monitor_words<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Zero the new monitor so the interpreter can find it.</span>
+      <span class="token punctuation">(</span><span class="token punctuation">(</span>BasicObjectLock <span class="token operator">*</span><span class="token punctuation">)</span> istate<span class="token operator">-></span><span class="token function">stack_base</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token operator">-></span><span class="token function">set_obj</span><span class="token punctuation">(</span><span class="token constant">NULL</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Resume the interpreter</span>
+      istate<span class="token operator">-></span><span class="token function">set_msg</span><span class="token punctuation">(</span>BytecodeInterpreter<span class="token operator">::</span>got_monitors<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>return_from_method<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token comment">// Copy the result into the caller's frame</span>
+      result_slots <span class="token operator">=</span> type2size<span class="token punctuation">[</span>method<span class="token operator">-></span><span class="token function">result_type</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">;</span>
+      <span class="token function">assert</span><span class="token punctuation">(</span>result_slots <span class="token operator">>=</span> <span class="token number">0</span> <span class="token operator">&amp;&amp;</span> result_slots <span class="token operator">&lt;=</span> <span class="token number">2</span><span class="token punctuation">,</span> <span class="token string">"what?"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      result <span class="token operator">=</span> istate<span class="token operator">-></span><span class="token function">stack</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> result_slots<span class="token punctuation">;</span>
+      <span class="token keyword">break</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>throwing_exception<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token function">assert</span><span class="token punctuation">(</span>HAS_PENDING_EXCEPTION<span class="token punctuation">,</span> <span class="token string">"should do"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">break</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>istate<span class="token operator">-></span><span class="token function">msg</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">==</span> BytecodeInterpreter<span class="token operator">::</span>do_osr<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token comment">// Unwind the current frame</span>
+      thread<span class="token operator">-></span><span class="token function">pop_zero_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Remove any extension of the previous frame</span>
+      <span class="token keyword">int</span> extra_locals <span class="token operator">=</span> method<span class="token operator">-></span><span class="token function">max_locals</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-</span> method<span class="token operator">-></span><span class="token function">size_of_parameters</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>stack<span class="token operator">-></span><span class="token function">sp</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> extra_locals<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+      <span class="token comment">// Jump into the OSR method</span>
+      Interpreter<span class="token operator">::</span><span class="token function">invoke_osr</span><span class="token punctuation">(</span>
+        method<span class="token punctuation">,</span> istate<span class="token operator">-></span><span class="token function">osr_entry</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> istate<span class="token operator">-></span><span class="token function">osr_buf</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> THREAD<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">return</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+    <span class="token keyword">else</span> <span class="token punctuation">&#123;</span>
+      <span class="token function">ShouldNotReachHere</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+  <span class="token punctuation">&#125;</span>
+
+  <span class="token comment">// Unwind the current frame</span>
+  thread<span class="token operator">-></span><span class="token function">pop_zero_frame</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Pop our local variables</span>
+  stack<span class="token operator">-></span><span class="token function">set_sp</span><span class="token punctuation">(</span>stack<span class="token operator">-></span><span class="token function">sp</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> method<span class="token operator">-></span><span class="token function">max_locals</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+  <span class="token comment">// Push our result</span>
+  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">int</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> result_slots<span class="token punctuation">;</span> i<span class="token operator">++</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    <span class="token comment">// Adjust result to smaller</span>
+    <span class="token keyword">union</span> <span class="token punctuation">&#123;</span>
+      <span class="token class-name">intptr_t</span> res<span class="token punctuation">;</span>
+      jint res_jint<span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span><span class="token punctuation">;</span>
+    res <span class="token operator">=</span> result<span class="token punctuation">[</span><span class="token operator">-</span>i<span class="token punctuation">]</span><span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>result_slots <span class="token operator">==</span> <span class="token number">1</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      BasicType t <span class="token operator">=</span> method<span class="token operator">-></span><span class="token function">result_type</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token function">is_subword_type</span><span class="token punctuation">(</span>t<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+        res_jint <span class="token operator">=</span> <span class="token punctuation">(</span>jint<span class="token punctuation">)</span><span class="token function">narrow</span><span class="token punctuation">(</span>t<span class="token punctuation">,</span> res_jint<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token punctuation">&#125;</span>
+    <span class="token punctuation">&#125;</span>
+    stack<span class="token operator">-></span><span class="token function">push</span><span class="token punctuation">(</span>res<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span><span aria-hidden=true class=line-numbers-rows><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre><hr class=footnotes-sep><section class=footnotes><ol class=footnotes-list><li id=fn1 class=footnote-item><p>具体分类类别可查看 <code>AbstractInterpreter.hpp$MethodKind</code>, 特别的是Math类，该类下的数学计算方法都会进行内联 <a href=#fnref1 class=footnote-backref>↩︎</a></p></li></ol></section></article><div class=post-copyright><div class=post-copyright__author><span class=post-copyright-meta><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class=post-copyright-info><a href=https://juzzia.github.io>Juzzia</a></span></div><div class=post-copyright__type><span class=post-copyright-meta><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class=post-copyright-info><a href=https://juzzia.github.io/posts/48bea92d.html>https://juzzia.github.io/posts/48bea92d.html</a></span></div><div class=post-copyright__notice><span class=post-copyright-meta><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class=post-copyright-info>本博客所有文章除特别声明外，均采用 <a href=https://creativecommons.org/licenses/by-nc-sa/4.0/ target=_blank>CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href=https://juzzia.github.io target=_blank>Juzzia's Blog</a>！</span></div></div><div class=tag_share><div class=post-meta__tag-list></div><div class=post_share><div class=social-share data-image=/img/avatar.jpg data-sites=wechat,weibo,qq></div><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/css/share.min.css media=print onload='this.media="all"'><script src=https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/js/social-share.min.js defer=defer></script></div></div><div class=post-reward><div class=reward-button><i class="fas fa-qrcode"></i>赞助</div><div class=reward-main><ul class=reward-all><li class=reward-item><a href=https://s2.loli.net/2024/08/01/jL2klE39vx5Ft4r.jpg target=_blank><img class=post-qr-code-img src=https://s2.loli.net/2024/08/01/jL2klE39vx5Ft4r.jpg alt=wechat></a><div class=post-qr-code-desc>wechat</div></li><li class=reward-item><a href=https://s2.loli.net/2024/08/01/2s3UCWdlneAiYRa.jpg target=_blank><img class=post-qr-code-img src=https://s2.loli.net/2024/08/01/2s3UCWdlneAiYRa.jpg alt=alipay></a><div class=post-qr-code-desc>alipay</div></li></ul></div></div><nav class=pagination-post id=pagination><div class="prev-post pull-left"><a href=/posts/f95e72b6.html title="字节码解释器 Interpreter"><div class=cover style=background:var(--default-bg-color)></div><div class=pagination-info><div class=label>上一篇</div><div class=prev_info>字节码解释器 Interpreter</div></div></a></div><div class="next-post pull-right"><a href=/posts/cff6dd61.html title=JMM><div class=cover style=background:var(--default-bg-color)></div><div class=pagination-info><div class=label>下一篇</div><div class=next_info>JMM</div></div></a></div></nav><hr class=custom-hr><div id=post-comment><div class=comment-head><div class=comment-headline><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class=comment-wrap><div><div id=giscus-wrap></div></div></div></div></div><div class=aside-content id=aside-content><div class="card-widget card-info"><div class=is-center><div class=avatar-img><img src=/img/avatar.jpg onerror='this.onerror=null,this.src="/img/friend_404.gif"' alt=avatar></div><div class=author-info__name>Juzzia</div><div class=author-info__description>分享技术，开发经验，学习总结</div></div><div class="card-info-data site-data is-center"><a href=/archives/ ><div class=headline>文章</div><div class=length-num>10</div></a><a href=/tags/ ><div class=headline>标签</div><div class=length-num>4</div></a><a href=/categories/ ><div class=headline>分类</div><div class=length-num>5</div></a></div><a id=card-info-btn target=_blank rel=noopener href=https://github.com/juzzia><i class="fab fa-github"></i><span>github</span></a><div class="card-info-social-icons is-center"><a class=social-icon href=https://github.com/juzzia target=_blank title=Github><i class="fab fa-github" style=color:#24292e></i></a><a class=social-icon href=mailto:juzzia@github.com target=_blank title=Email><i class="fas fa-envelope" style=color:#4a7dbe></i></a></div></div><div class=sticky_layout><div class=card-widget id=card-toc><div class=item-headline><i class="fas fa-stream"></i><span>目录</span><span class=toc-percentage></span></div><div class="toc-content is-expand"><ol class=toc><li class="toc-item toc-level-4"><a class=toc-link href=#1-%E8%83%8C%E6%99%AF><span class=toc-number>1.</span> <span class=toc-text>1. 背景</span></a></li><li class="toc-item toc-level-4"><a class=toc-link href=#2-%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5><span class=toc-number>2.</span> <span class=toc-text>2. 相关概念</span></a><ol class=toc-child><li class="toc-item toc-level-5"><a class=toc-link href=#%E7%89%B9%E6%AE%8A%E5%AF%84%E5%AD%98%E5%99%A8><span class=toc-number>2.1.</span> <span class=toc-text>特殊寄存器</span></a></li><li class="toc-item toc-level-5"><a class=toc-link href=#%E8%B0%83%E7%94%A8%E6%96%B9%E6%B3%95%E5%AD%97%E8%8A%82%E7%A0%81%E6%8C%87%E4%BB%A4><span class=toc-number>2.2.</span> <span class=toc-text>调用方法字节码指令</span></a></li></ol></li></ol><li class="toc-item toc-level-3"><a class=toc-link href=#3-%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90><span class=toc-number></span> <span class=toc-text>3. 源码剖析</span></a><ol class=toc-child><li class="toc-item toc-level-4"><a class=toc-link href=#%E6%96%B9%E6%B3%95%E5%85%A5%E5%8F%A3><span class=toc-number>1.</span> <span class=toc-text>方法入口</span></a></li><li class="toc-item toc-level-4"><a class=toc-link href=#%E5%88%86%E6%9E%90java%E6%96%B9%E6%B3%95%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B><span class=toc-number>2.</span> <span class=toc-text>分析java方法执行流程</span></a></li></ol></li></div></div><div class="card-widget card-recent-post"><div class=item-headline><i class="fas fa-history"></i><span>最新文章</span></div><div class=aside-list><div class="aside-list-item no-cover"><div class=content><a class=title href=/posts/1fe4afce.html title="字节码指令执行过程 BytecodeInterpreter">字节码指令执行过程 BytecodeInterpreter</a><time datetime=2025-03-07T13:34:00.000Z title="发表于 2025-03-07 21:34:00">2025-03-07</time></div></div><div class="aside-list-item no-cover"><div class=content><a class=title href=/posts/1a5fbe08.html title=CPU缓存与MESI协议>CPU缓存与MESI协议</a><time datetime=2025-03-04T12:42:00.000Z title="发表于 2025-03-04 20:42:00">2025-03-04</time></div></div><div class="aside-list-item no-cover"><div class=content><a class=title href=/posts/bcc098b4.html title="Liunx 任务调度">Liunx 任务调度</a><time datetime=2025-02-24T13:52:00.000Z title="发表于 2025-02-24 21:52:00">2025-02-24</time></div></div><div class="aside-list-item no-cover"><div class=content><a class=title href=/posts/991d833e.html title="Liunx Futex">Liunx Futex</a><time datetime=2025-02-22T15:33:00.000Z title="发表于 2025-02-22 23:33:00">2025-02-22</time></div></div><div class="aside-list-item no-cover"><div class=content><a class=title href=/posts/f95e72b6.html title="字节码解释器 Interpreter">字节码解释器 Interpreter</a><time datetime=2025-02-18T14:45:00.000Z title="发表于 2025-02-18 22:45:00">2025-02-18</time></div></div></div></div></div></div></main></div><div id=rightside><div id=rightside-config-hide><button id=readmode type=button title=阅读模式><i class="fas fa-book-open"></i></button><button id=darkmode type=button title=浅色和深色模式转换><i class="fas fa-adjust"></i></button><button id=hide-aside-btn type=button title=单栏和双栏切换><i class="fas fa-arrows-alt-h"></i></button></div><div id=rightside-config-show><button id=rightside-config type=button title=设置><i class="fas fa-cog fa-spin"></i></button><button class=close id=mobile-toc-button type=button title=目录><i class="fas fa-list-ul"></i></button><a id=to_comment href=#post-comment title=直达评论><i class="fas fa-comments"></i></a><button id=go-up type=button title=回到顶部><span class=scroll-percent></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.13.0"></script><script src="/js/main.js?v=4.13.0"></script><script src=https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.33/dist/fancybox/fancybox.umd.min.js></script><script>function panguFn(){"object"==typeof pangu?pangu.autoSpacingPage():getScript("https://cdn.jsdelivr.net/npm/pangu@4.0.7/dist/browser/pangu.min.js").then(()=>{pangu.autoSpacingPage()})}function panguInit(){panguFn()}document.addEventListener("DOMContentLoaded",panguInit)</script><div class=js-pjax><script>(()=>{var e=()=>{var e;0!==(e=document.querySelectorAll("pre > code.mermaid")).length&&e.forEach(e=>{var t=document.createElement("div");t.className="mermaid-wrap",t.innerHTML=`<pre class="mermaid-src" hidden>${e.textContent}</pre>`,e.parentNode.replaceWith(t)});let t=document.querySelectorAll("#article-container .mermaid");0!==t.length&&(e=()=>(e=>{window.loadMermaid=!0;let c="dark"===document.documentElement.getAttribute("data-theme")?"dark":"default";Array.from(e).forEach((e,t)=>{let n=e.firstElementChild;e="%%{init:{ 'theme':'"+c+"'}}%%\n"+n.textContent;let i=mermaid.render("mermaid-"+t,e);"string"==typeof i?(t=i,n.insertAdjacentHTML("afterend",t)):(i.then(({svg:e})=>{n.insertAdjacentHTML("afterend",e)}),setTimeout(()=>{var e=document.getElementsByTagName("svg");Array.from(e).forEach((e,t)=>{o(e)})},3e3))})})(t),btf.addGlobalFn("themeChange",e,"mermaid"),window.loadMermaid?e():btf.getScript("https://cdn.jsdelivr.net/npm/mermaid@11.0.0/dist/mermaid.min.js").then(e))};let o=l=>{let u=1,m=0,h=0,c=!1,o,d,r=0,e=!1,t=1,n=0,i=0;function a(){u=t,m=n,h=i,e=!1,s()}function s(){l.style.transform=`translate(${m}px, ${h}px) scale(${u})`}l.addEventListener("wheel",function(e){e.preventDefault();var t=0<e.deltaY?-.04:.04,n=(t=Math.min(Math.max(u+t,1),2.3))/u,i=l.getBoundingClientRect(),c=(e.clientX-i.left)/i.width,e=(e.clientY-i.top)/i.height,i=l.getBBox(),c=c*i.width,e=e*i.height;m=m*n-c*(n-1),h=h*n-e*(n-1),u=t,s()}),l.addEventListener("mousedown",function(e){c=!0,o=e.clientX,d=e.clientY,l.style.cursor="grabbing"}),document.addEventListener("mousemove",function(e){c&&(m+=e.clientX-o,h+=e.clientY-d,o=e.clientX,d=e.clientY,s())}),document.addEventListener("mouseup",function(){c=!1,l.style.cursor="grab"}),l.parentElement.addEventListener("dblclick",function(e){var t=Date.now();a(),r=t}),l.addEventListener("touchstart",function(e){if(1===e.touches.length&&((t=Date.now())-r<300&&(n=Date.now(),a(),r=n),r=t),1===(n=e).touches.length)c=!0,o=n.touches[0].clientX,d=n.touches[0].clientY;else if(2===n.touches.length){var t=n.touches[0].clientX-n.touches[1].clientX,n=n.touches[0].clientY-n.touches[1].clientY;let o=Math.sqrt(t*t+n*n),d=m,r=h,a=u;function i(e){var t,n,i,c;2===e.touches.length&&(t=e.touches[0].clientX-e.touches[1].clientX,n=e.touches[0].clientY-e.touches[1].clientY,t=Math.sqrt(t*t+n*n)/o,n=Math.min(Math.max(a*t,.5),1.15),c=(e.touches[0].clientX+e.touches[1].clientX)/2-l.getBoundingClientRect().left,e=(e.touches[0].clientY+e.touches[1].clientY)/2-l.getBoundingClientRect().top,i=l.getBBox(),c=c/l.getBoundingClientRect().width*i.width,e=e/l.getBoundingClientRect().height*i.height,m=d*t-c*(t-1),h=r*t-e*(t-1),u=n,s())}document.addEventListener("touchmove",i),document.addEventListener("touchend",function e(){document.removeEventListener("touchmove",i),document.removeEventListener("touchend",e)})}}),document.addEventListener("touchend",function(){c=!1})};btf.addGlobalFn("encrypt",e,"mermaid"),window.pjax?e():document.addEventListener("DOMContentLoaded",e)})()</script><script>(()=>{let s=t=>"dark"===t?"dark":"light";var t=()=>{var t,e=Object.assign({src:"https://giscus.app/client.js","data-repo":"juzzia/blog-comment","data-repo-id":"R_kgDOMc3hsw","data-category-id":"DIC_kwDOMc3hs84ChTYG","data-mapping":"pathname","data-theme":s(document.documentElement.getAttribute("data-theme")),"data-reactions-enabled":"1",crossorigin:"anonymous",async:!0},{"data-input-position":"top","data-emit-metadata":1,"data-lang":"zh-CN"}),a=document.createElement("script");for(t in e)a.setAttribute(t,e[t]);document.getElementById("giscus-wrap").appendChild(a)};function e(t){var e=document.querySelector("#post-meta .gsc-comments-count");e&&(e.textContent=t)}window.addEventListener("message",function(t){"https://giscus.app"===t.origin&&"object"==typeof t.data&&t.data.giscus&&((t=t.data.giscus).error?e(0):t.discussion&&e(t.discussion.totalCommentCount+t.discussion.totalReplyCount))}),btf.addGlobalFn("themeChange",t=>{var e;t={setConfig:{theme:s(t)}},(e=document.querySelector("iframe.giscus-frame"))&&e.contentWindow.postMessage({giscus:t},"https://giscus.app")},"giscus"),t()})()</script></div><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.css media=print onload='this.media="all"'><script src=https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.js></script><script src=https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/metingjs/dist/Meting.min.js></script><script async data-pjax src=//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js></script><div id=local-search><div class=search-dialog><nav class=search-nav><span class=search-dialog-title>搜索</span><span id=loading-status></span><button class=search-close-button><i class="fas fa-times"></i></button></nav><div class=is-center id=loading-database><i class="fas fa-spinner fa-pulse"></i><span> 数据库加载中</span></div><div class=search-wrap><div id=local-search-input><div class=local-search-box><input class=local-search-box--input placeholder=搜索文章 type=text></div></div><hr><div id=local-search-results></div><div id=local-search-stats-wrap></div></div></div><div id=search-mask></div><script src="/js/search/local-search.js?v=4.13.0"></script></div></div></body></html>
